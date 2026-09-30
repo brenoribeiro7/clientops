@@ -138,3 +138,11 @@ INFO eventos operacionais/autenticação; WARNING falha/rate/validação agregad
 | Snapshot/backup | Perda de arquivos | Histórico indisponível | Arquivos imutáveis, referências e restore testado | REP-04 e OPS-02 |
 
 Riscos residuais concretos: quem recebe/obtém link pode aprovar; clipboard/WhatsApp estão fora do controle da aplicação. Um host/volume requer backup e monitoramento; não há HA. Layout PDF e custo de decode/hash dependem do container alvo e têm gates posteriores. Nenhuma dessas limitações abre decisão estrutural de CL-00.
+
+## Controles implementados na Foundation CL-01
+
+O Nginx serve todos os documentos com a política `default-src 'self'; script-src 'self'; style-src 'self'; style-src-elem 'self'; style-src-attr 'none'; img-src 'self' blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`. O build não usa script ou atributo style inline. HTML recebe `no-store`, `no-referrer`, `nosniff` e `DENY`; assets com hash recebem cache imutável. HTTPS acrescenta HSTS `max-age=31536000` sem `includeSubDomains`.
+
+A rede `edge` é `172.28.0.0/28`; somente o endereço fixo do Nginx `172.28.0.2/32` consta em `TRUSTED_PROXY_CIDRS`. O middleware remove `X-Forwarded-*` de origem não confiável. Testes cobrem request via proxy e request direto com headers forjados. A API e o proxy executam sem root, somente o web publica porta, o readiness não é exposto e segredos não aparecem no frontend, histórico de imagens ou logs examinados.
+
+O volume privado fica fora do web root, montado somente pela API e operado como UID 10001. CL-01 testa apenas confinamento/permissões e o probe efêmero do readiness; upload, FileStorage operacional e arquivos de domínio permanecem CL-05. Autenticação, sessão e CSRF funcional permanecem CL-02.

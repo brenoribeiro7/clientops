@@ -1,6 +1,6 @@
 # ClientOps — fases, gates e evidências
 
-Cada fase precisa satisfazer o gate anterior e entregar evidência real. O gate original CL-00 foi rejeitado pela auditoria independente. Esta execução é exclusivamente **CL-00-FIX documental**, cujo resultado habilita nova auditoria, sem autorizar CL-01. Não há implementação, instalação, Git init, commit/push/PR.
+Cada fase precisa satisfazer o gate anterior e entregar evidência real. O parágrafo abaixo preserva o histórico da correção documental CL-00-FIX; o estado operacional atual da Foundation está na seção “Execução CL-01”.
 
 ## Read-first original — histórico CL-00 em 25/09/2026
 
@@ -155,7 +155,23 @@ Resolver patches compatíveis e validar ambiente não reabre essas escolhas. Mud
 | Git/toolchain disponíveis | FAIL — Git, Node, npm, uv e Docker ausentes do PATH; Python disponível 3.12.3, alvo 3.13.x; nenhuma instalação autorizada no FIX |
 | Reauditoria independente aceita | Pendente — esta entrega será submetida à reauditoria |
 
-Portanto CL-01 **não pode prosseguir** neste ambiente/estado. Isso não impede a correção documental solicitada nem equivale a finding B01 não corrigido: root e regra de bloqueio foram estabelecidos, sem bootstrap.
+Na data da correção CL-00-FIX, CL-01 **não podia prosseguir** naquele ambiente/estado. Esse registro é histórico e foi superado pelo preflight posterior descrito abaixo.
+
+## Execução CL-01 — 30/09/2026
+
+O preflight posterior estabeleceu o root `/home/breno/Projects/clientops`, Git funcional, Python 3.13.15, uv 0.12.19, Node 24.21.0, npm 11.19.0, Docker 29.1.3 e Compose 2.40.3. O baseline dos nove documentos está no commit `84f7c4a`; a implementação ocorre em `feat/cl-01-foundation`, sem merge para `main`.
+
+A Foundation local está implementada: locks, FastAPI/config/Clock/erros/logs, PostgreSQL 17 com roles separadas, revisão vazia `0001_foundation`, health live/ready, probe técnico do volume, shells React, Nginx/CSP/TLS, contratos OpenAPI→TypeScript, Compose, testes e workflow. Scheduler e FileStorage operacional permanecem CL-05. Nenhuma entidade ou autenticação CL-02+ foi criada.
+
+T01–T24 passaram localmente; a matriz e os comandos estão em TESTING. O ciclo real de banco indisponível preservou live 200, produziu ready 503 e recuperou ready 200 sem restart da API. A recriação de containers sem `--volumes` preservou `pg_data`, revisão `0001_foundation` e marcador 0600 de `private_files`; apenas o marcador de teste foi removido.
+
+O workflow define `backend-quality`, `frontend-quality`, `database-migration`, `contract-drift`, `compose-smoke`, `security-foundation` e `cl01-gate`. O gate usa `!cancelled()` para preservar cancelamento do workflow e, nos demais resultados, exige `success` de cada job; failure/skipped ou qualquer valor diferente falha o gate. O repositório `brenoribeiro7/clientops` é público, usa `main` como branch padrão e mantém `main` em `84f7c4aa5af9dc292b109cf6602d3dd302ac870e`; a feature é `feat/cl-01-foundation`.
+
+O SHA pré-correção documental `6776fa2464cb09d66b318d103e85e74ec48f094e` recebeu o run real histórico `36732984184` com conclusão `success`. `backend-quality`, `frontend-quality`, `database-migration`, `contract-drift`, `compose-smoke`, `security-foundation` e `cl01-gate` foram todos `success`. Como a reconciliação documental cria novo SHA, esse run não é o gate final: o SHA final precisa de nova execução completa e verde, registrada no relatório externo para não criar loop de commits.
+
+Nenhuma fase da v1 pode exigir infraestrutura paga ou produção pública 24/7 para fechar gate/release. Execução, testes e demo oficiais usam a baseline local definida em PRODUCT/ARCHITECTURE; deployment público permanece OPTIONAL/NON-BLOCKING, sem enfraquecer a arquitetura production-deployable.
+
+Durante a execução, o uso de `infra/dev-env.py --force` regenerou credenciais enquanto o volume PostgreSQL descartável ainda guardava as anteriores. Somente esse `pg_data` técnico sem dados relevantes foi removido; `private_files` foi preservado. O procedimento operacional agora proíbe essa rotação sobre volume persistido e exige coordenação explícita futura.
 
 ## Reauditoria interna CL-00-FIX
 
@@ -171,7 +187,7 @@ O resultado original foi rejeitado pela auditoria independente; não é mantida 
 | M01 — SHARING UX | RESOLVED | Web Share somente OPTIONAL/NON-BLOCKING com gesto/share sheet; fallback Copiar link; WhatsApp sem bearer em query. PRODUCT, ARCHITECTURE, SECURITY, UI_UX, TESTING UI-04 condicional, DECISIONS |
 | M02 — PRIVATE CSP | RESOLVED | /q estrita; script-src unsafe-inline proibido; eventual style inline privado mínimo/documentado/verificado CL-01/CL-02, sem relaxamento global. ARCHITECTURE, SECURITY, UI_UX, TESTING SEC-05, PHASES, DECISIONS |
 
-RESOLVED significa que o finding foi corrigido na especificação; não declara que os testes futuros passaram. H02 permanece um gate de implementação/release não executado, com critério fechado; Git/toolchain ainda impedem CL-01. Nenhuma funcionalidade nova REQUIRED V1 foi acrescentada: onboarding/privacidade/optional Charge/segurança/mobile foram corrigidos, Web Share é opcional, HEIC não foi incorporado.
+RESOLVED significa que o finding foi corrigido na especificação; não declara que os testes futuros passaram. No checkpoint histórico CL-00-FIX, H02 permanecia um gate futuro e Git/toolchain ainda impediam CL-01; o impedimento de toolchain foi superado pelo preflight posterior, enquanto H02 continua previsto para CL-05/CL-06. Nenhuma funcionalidade nova REQUIRED V1 foi acrescentada: onboarding/privacidade/optional Charge/segurança/mobile foram corrigidos, Web Share é opcional, HEIC não foi incorporado.
 
 Arquivos movidos e com conteúdo alterado nesta correção, todos sob o root oficial:
 
@@ -187,6 +203,6 @@ Arquivos movidos e com conteúdo alterado nesta correção, todos sob o root ofi
 
 Verificação final documental: PASS. Inventário exato de nove documentos no root oficial, 14 links locais válidos, cinco exemplos JSON válidos, fences balanceados e 33 tabelas com colunas consistentes após corrigir o delimitador em API.md. Permanecem 16 entidades, 12 ADRs, cobertura sequencial das 40 decisões e sete fases CL-00..CL-06. A revisão cruzada dos nove documentos não encontrou contradição bloqueadora residual nos sete findings: referências ao root anterior são históricas, America/Bahia está restrita ao seed/fixtures, dados extras do cliente ficam internos, ausência de Charge é legítima, HEIC segue excluído, Web Share é opcional e /q não herda exceção privada de CSP.
 
-Nenhuma funcionalidade nova REQUIRED V1 foi introduzida. A prontidão abaixo é somente para reauditoria documental; não significa aprovação independente nem libera CL-01, cujo preflight continua bloqueado. Nenhum teste de runtime, browser/iPhone, build, Docker ou CI foi executado no FIX. Não houve instalação, aplicação, migration, Git init, commit, push ou PR.
+Nenhuma funcionalidade nova REQUIRED V1 foi introduzida no CL-00-FIX. Naquele checkpoint histórico, a prontidão abaixo era somente para reauditoria documental, não liberava CL-01 e nenhum teste de runtime, browser/iPhone, build, Docker ou CI havia sido executado. O preflight, a implementação e a CI CL-01 posteriores estão registrados na seção de execução acima.
 
 CL-00-FIX STATUS: READY FOR RE-AUDIT

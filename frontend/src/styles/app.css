@@ -1,0 +1,258 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-canvas);
+  color: var(--color-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  min-width: 20rem;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-control);
+  background: var(--color-text);
+  color: white;
+  transform: translateY(-150%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.brand {
+  color: var(--color-text);
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  text-decoration: none;
+}
+
+.button,
+.navigation-link {
+  min-height: 2.75rem;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-weight: 650;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--color-primary-hover);
+}
+
+.button--secondary {
+  border-color: var(--color-interactive-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.button--secondary:hover {
+  background: var(--color-canvas);
+}
+
+.button--link {
+  margin-top: 1.5rem;
+  text-decoration: none;
+}
+
+.navigation-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  color: var(--color-muted);
+  text-decoration: none;
+}
+
+.navigation-link:hover,
+.navigation-link--active {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.admin-shell {
+  min-height: 100vh;
+}
+
+.admin-sidebar {
+  display: none;
+}
+
+.mobile-header,
+.technician-header,
+.public-header {
+  display: flex;
+  min-height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.admin-main,
+.technician-main,
+.public-main,
+.route-loading {
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 6rem;
+}
+
+.public-main {
+  max-width: 47.5rem;
+}
+
+.foundation-card {
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--color-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  line-height: 1.15;
+}
+
+.foundation-description {
+  max-width: 42rem;
+  margin: 1rem 0 0;
+  color: var(--color-muted);
+}
+
+.foundation-note,
+.role-label {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.drawer__dialog {
+  width: min(22rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  margin: 1rem 1rem 1rem auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.drawer__dialog::backdrop {
+  background: rgb(15 23 42 / 55%);
+}
+
+.drawer__panel {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1rem;
+}
+
+.technician-nav {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+@media (min-width: 64rem) {
+  .admin-shell {
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+  }
+
+  .admin-sidebar {
+    position: sticky;
+    top: 0;
+    display: grid;
+    align-content: start;
+    gap: 2rem;
+    height: 100vh;
+    padding: 1.5rem;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .mobile-header {
+    display: none;
+  }
+
+  .admin-main,
+  .technician-main,
+  .public-main {
+    padding: 3rem 2rem;
+  }
+
+  .technician-nav {
+    position: static;
+    max-width: 80rem;
+    margin: 0 auto;
+    justify-content: flex-start;
+    border: 0;
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skip-link {
+    transition: transform 120ms ease-out;
+  }
+}
