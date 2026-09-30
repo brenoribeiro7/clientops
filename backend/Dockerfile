@@ -17,7 +17,9 @@ COPY backend/app ./app
 COPY backend/migrations ./migrations
 COPY backend/tests ./tests
 COPY backend/alembic.ini ./alembic.ini
-RUN mkdir -p /app/.pytest_cache && chown -R 10001:10001 /app/.pytest_cache
+RUN mkdir -p /app/.pytest_cache \
+    && chown -R 10001:10001 /app/.pytest_cache \
+    && install -d -o 10001 -g 10001 -m 0700 /var/lib/clientops/private
 ENV PATH=/app/.venv/bin:$PATH \
     PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1
