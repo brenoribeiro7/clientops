@@ -22,6 +22,12 @@ flowchart LR
 
 Sem serviços externos obrigatórios. WhatsApp é destino de navegação voluntária para compartilhar texto; não integra a API. Uma instalação/um banco/um BusinessProfile. Produção pressupõe HTTPS e origem única. API e banco não são expostos diretamente à internet; somente o proxy recebe tráfego.
 
+### Baseline operacional local e hosting
+
+A baseline oficial da v1 executa e testa localmente, sem infraestrutura paga obrigatória: Docker Compose orquestra FastAPI, PostgreSQL e Nginx; `pg_data` e `private_files` preservam dados localmente; jobs/scheduler e PDFs/processamento permanecem locais quando suas fases forem implementadas. GitHub repository/CI serve ao desenvolvimento, e a demo pode ser comprovada por execução local, screenshots, vídeo e documentação.
+
+Essa baseline separa arquitetura de hosting. O sistema continua production-deployable, com PostgreSQL, persistência, fronteiras privadas e controles de segurança intactos. VPS, banco ou object storage gerenciados, CDN, domínio, observabilidade SaaS, scheduler/e-mail cloud e operação pública 24/7 são opções de deployment, não requisitos de gate/release v1. Adotar serviço cloud como dependência obrigatória do core exige Change Request explícito; free tier não governa o desenho.
+
 ### Foundation CL-01 implementada
 
 A composição atual contém `web`, `api`, `db` e `migrate`; `test` e `browser-test` existem somente no override de testes. O scheduler foi adiado para CL-05, quando haverá o primeiro job executável. A API roda como UID/GID 10001, o Nginx como 101, e apenas `127.0.0.1:8080` é publicado na composição base. Os volumes nomeados são `pg_data` e `private_files`; o web não monta arquivos privados.

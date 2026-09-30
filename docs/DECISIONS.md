@@ -174,6 +174,16 @@ Linhas frontend também conferidas em [TypeScript5.9](https://www.typescriptlang
 - **Rejected alternatives:** volume público, secrets VITE_, dependência externa para fluxo básico, upload público, promessa de multi-host.
 - **Revisit trigger:** necessidade operacional mensurada de HA/storage remoto, classificada POST-V1.
 
+### Registro aprovado — baseline de custo da infraestrutura v1
+
+Este adendo humano aprovado em CL-01-AUDIT-FIX preserva a topologia de D12 e define como ela deve ser executada e demonstrada na v1.
+
+- **Decision:** execução, testes e demonstração oficiais devem funcionar localmente sem custo recorrente obrigatório; deployment público é OPTIONAL/NON-BLOCKING.
+- **Rationale:** Docker Compose, FastAPI, PostgreSQL, Nginx, volumes persistentes, jobs/scheduler e processamento local já preservam correção arquitetural e tornam a entrega demonstrável sem contratar hosting.
+- **Consequences:** repositório/CI GitHub permanecem workflow de desenvolvimento; screenshots, vídeo e documentação podem evidenciar a demo. Gate/release v1 não exige VPS, banco/object storage/CDN/domínio/observabilidade/scheduler/e-mail pagos nem produção pública 24/7.
+- **Rejected alternatives:** SQLite de produção, remoção de persistência ou segurança, troca de PostgreSQL, desenho condicionado a free tiers e serviço cloud obrigatório no core.
+- **Revisit trigger:** serviço cloud pode entrar como opção de deployment/adaptação; torná-lo dependência obrigatória requer Change Request explicitamente aprovado.
+
 ## Cobertura das 40 decisões obrigatórias
 
 | # | Decisão fechada | Fonte normativa |
@@ -221,7 +231,7 @@ Linhas frontend também conferidas em [TypeScript5.9](https://www.typescriptlang
 
 ## Decisões provisórias, CRs e evidência
 
-As correções dos sete findings estão consolidadas para reauditoria; matriz de resolução/evidências em PHASES. Não há decisão estrutural provisória criada pelo FIX. Git/toolchain ainda indisponíveis são impedimento operacional explícito para CL-01, não autorização para instalar/bootstrap nesta correção. Patches de lock, desempenho, PDF e gate real iPhone são verificações futuras, sem autorização para mudar baseline silenciosamente. Suporte HEIC ou mudança da support matrix só poderá ser decidido explicitamente se o gate H02 exigir; não é funcionalidade adicionada agora.
+As correções dos sete findings estão consolidadas para reauditoria; matriz de resolução/evidências em PHASES. Não há decisão estrutural provisória criada pelo FIX. A indisponibilidade de Git/toolchain foi um impedimento operacional do checkpoint histórico CL-00-FIX e foi superada pelo preflight e pela execução CL-01 posteriores. Patches de desempenho, PDF e gate real iPhone continuam verificações futuras, sem autorização para mudar baseline silenciosamente. Suporte HEIC ou mudança da support matrix só poderá ser decidido explicitamente se o gate H02 exigir; não é funcionalidade adicionada agora.
 
 As fontes de biblioteca acima foram consultadas no CL-00 original; Web Share/CSP3 foram consultadas na correção CL-00-FIX. Nenhum benchmark, teste de produto, dispositivo iPhone, instalação, Docker ou CI foi executado nesta correção. Afirmação de compatibilidade empírica desta aplicação permanece **não verificada** até os gates correspondentes; recursos documentados de biblioteca não equivalem a sucesso da aplicação.
 
@@ -233,4 +243,6 @@ As decisões D01–D12 não foram reabertas. A resolução mecânica escolheu Py
 
 O scheduler também foi adiado para CL-05 em vez de criar um processo inerte. CL-01 implementou somente o probe técnico do volume necessário ao readiness, sem interface FileStorage operacional. A topologia final de D12 permanece válida por fases: a composição Foundation atual possui web/api/db/migrate e os dois volumes; os serviços futuros entram quando tiverem trabalho real.
 
-O workflow local foi criado com Actions por SHA, imagens por digest, locks congelados e gate agregado que examina todos os jobs. Até existir destino GitHub autorizado e run no SHA final, esse arquivo é implementação auditada localmente, não evidência de CI real.
+O workflow foi criado com Actions por SHA, imagens por digest, locks congelados e gate agregado que examina todos os jobs. O repositório público `brenoribeiro7/clientops` usa `main` como branch padrão; `main` está em `84f7c4aa5af9dc292b109cf6602d3dd302ac870e` e a implementação permanece em `feat/cl-01-foundation`, sem merge.
+
+O SHA pré-correção documental `6776fa2464cb09d66b318d103e85e74ec48f094e` recebeu CI real no run histórico `36732984184`, conclusão `success`: `backend-quality`, `frontend-quality`, `database-migration`, `contract-drift`, `compose-smoke`, `security-foundation` e `cl01-gate` concluíram com `success`. Esse run prova aquele SHA, não o novo commit documental; a política exige novo run completo e verde no SHA final, cuja identificação exata pertence ao relatório externo desta correção para evitar loop de commits de evidência.

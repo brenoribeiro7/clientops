@@ -1,6 +1,6 @@
 # ClientOps — produto v1.0
 
-Baseline CL-00, 25/09/2026. Documento normativo de produto; regras detalhadas em [DOMAIN](DOMAIN.md), contratos em [API](API.md), execução em [PHASES](PHASES.md). O status desta especificação não autoriza iniciar CL-01.
+Baseline CL-00, 25/09/2026. Documento normativo de produto; regras detalhadas em [DOMAIN](DOMAIN.md), contratos em [API](API.md), execução em [PHASES](PHASES.md). A restrição original de não iniciar CL-01 é registro histórico; o estado atual da Foundation e sua evidência ficam em PHASES.
 
 Correção documental CL-00-FIX incorpora as instruções da auditoria fornecida pelo usuário. Root oficial: /home/breno/Projects/clientops; /home/breno/Projects é somente o diretório pai. O gate anterior foi rejeitado; o resultado desta correção habilita apenas nova auditoria, conforme PHASES.
 
@@ -21,6 +21,12 @@ A demonstração usa **Climatech Serviços**, pequena empresa de climatização/
 | CUSTOMER | Ler e aprovar orçamento específico; solicitar alteração por contato externo | Página pública, sem conta |
 
 Uma instalação corresponde a uma empresa: **single-tenant**. Não há organization_id, seletor de empresa, planos ou assinatura SaaS. Papéis fixos; usuário desabilitado perde acesso e sessões. Primeiro Admin é criado por comando seguro; Admin cria técnicos.
+
+### Baseline de custo e entrega da v1
+
+A arquitetura permanece correta e implantável em produção, enquanto execução, testes e demonstração oficiais da v1 devem ser possíveis localmente sem custo recorrente obrigatório de infraestrutura. A baseline oficial usa Docker Compose, FastAPI e PostgreSQL locais ou em containers, volumes locais persistentes `pg_data` e `private_files`, Nginx/proxy local, jobs e scheduler locais quando entrarem nas fases previstas, e PDFs/processamento locais. O repositório e a CI no GitHub integram o workflow de desenvolvimento; a demonstração oficial pode usar execução local, screenshots, vídeo e documentação.
+
+Deployment público é **OPTIONAL/NON-BLOCKING**. Gate e release v1 não exigem VPS, banco gerenciado, S3/object storage, CDN, domínio, SaaS de observabilidade, scheduler cloud ou serviço de e-mail pagos, nem produção pública 24/7. Essa restrição não autoriza SQLite em produção, retirada de persistência, substituição de PostgreSQL, remoção de segurança, adaptação artificial a free tiers ou impedimento de deploy real futuro. Serviço cloud futuro deve ser opção de deployment/adaptação, não dependência obrigatória do core da v1, salvo Change Request explicitamente aprovado.
 
 ## Hero Flow bloqueador
 
