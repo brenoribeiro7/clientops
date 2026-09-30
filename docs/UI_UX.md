@@ -214,3 +214,9 @@ Meta WCAG2.2 AA aplicável ao app: teclado completo, skip link/landmarks/h1, foc
 Não depender de drag/hover/cor/gesto complexo. prefers-reduced-motion remove animação desnecessária. Tabelas/cards mantêm labels; erro de formulário leva foco ao resumo com links para campos. Upload tem botão acionável por teclado.
 
 Gate por feature: normal/L/E/F/D/S; quatro viewports; keyboard/zoom/reflow; axe sem serious/critical não justificados; contraste calculado e render conferido; uma ação principal; status textual; sem lorem/dados reais; nenhuma informação de hash/storage/token na jornada comercial. Critérios e exceções referenciam [WCAG2.2](https://www.w3.org/TR/WCAG22/). PDF tem leitura/ordem visual verificadas, sem promessa de PDF/UA.
+
+## Foundation CL-01 implementada
+
+O shell React implementa `/admin`, `/tech/today`, `/q` e `/login`, além de redirecionamento `/tech` e 404 contextual. Os três layouts usam lazy loading, landmarks, h1 e skip link. A navegação administrativa usa sidebar a partir de 1024 px e Drawer nativo abaixo desse limite, com Escape e restauração de foco. Não há login funcional, guard de autenticação, métricas, fixtures comerciais ou botões que simulem trabalho de fases posteriores.
+
+Os tokens de cor, tipografia, espaçamento, raio, sombra e largura vêm deste contrato e são aplicados por CSS externo compatível com a CSP. Vitest/RTL cobre sete casos; a matriz Playwright em Chromium 390/768/1024/1440, Firefox 1440 e WebKit 390 executou 87 casos com três skips deliberados. Os skips são somente o caso Drawer nos projetos Chromium 1024, Chromium 1440 e Firefox 1440, onde a sidebar substitui o Drawer; a mesma interação passa em Chromium 390, Chromium 768 e WebKit 390. Axe não encontrou violações sérias ou críticas nos shells testados.

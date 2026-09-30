@@ -1,6 +1,6 @@
 # ClientOps — arquitetura e operação
 
-Especificação CL-00. [DOMAIN](DOMAIN.md) governa invariantes, [SECURITY](SECURITY.md) governa controles, [API](API.md) governa HTTP. Os layouts e comandos abaixo são contratos futuros; nenhum bootstrap foi realizado.
+Especificação CL-00 com reconciliação da Foundation CL-01 em 30/09/2026. [DOMAIN](DOMAIN.md) governa invariantes, [SECURITY](SECURITY.md) governa controles, [API](API.md) governa HTTP. As partes comerciais continuam contratos futuros; a infraestrutura CL-01 descrita como implementada abaixo existe no repositório.
 
 Project/repository root oficial: **/home/breno/Projects/clientops**. /home/breno/Projects é somente o diretório pai. Todos os caminhos relativos deste documento partem do root oficial; os nove documentos ficam em /home/breno/Projects/clientops/docs. Git não é inicializado em CL-00-FIX. Quando autorizado em CL-01, git init só poderá ocorrer dentro de /home/breno/Projects/clientops; é proibido inicializar o repositório no diretório pai. CL-01 não poderá prosseguir se o root real não puder ser estabelecido ou se Git/toolchain continuarem indisponíveis; preflight e evidência em PHASES.
 
@@ -22,6 +22,14 @@ flowchart LR
 
 Sem serviços externos obrigatórios. WhatsApp é destino de navegação voluntária para compartilhar texto; não integra a API. Uma instalação/um banco/um BusinessProfile. Produção pressupõe HTTPS e origem única. API e banco não são expostos diretamente à internet; somente o proxy recebe tráfego.
 
+### Foundation CL-01 implementada
+
+A composição atual contém `web`, `api`, `db` e `migrate`; `test` e `browser-test` existem somente no override de testes. O scheduler foi adiado para CL-05, quando haverá o primeiro job executável. A API roda como UID/GID 10001, o Nginx como 101, e apenas `127.0.0.1:8080` é publicado na composição base. Os volumes nomeados são `pg_data` e `private_files`; o web não monta arquivos privados.
+
+As redes dedicadas são `edge` (`172.28.0.0/28`) e `backend` interna (`172.28.1.0/28`). O proxy ocupa `172.28.0.2` e a API confia exatamente em `172.28.0.2/32`; headers `X-Forwarded-*` de qualquer outro cliente são removidos antes de serem interpretados. A API usa uma conexão PostgreSQL runtime sem DDL, enquanto o serviço one-shot de migration recebe a credencial DDL separada.
+
+O storage atual é um probe técnico do readiness: cria arquivo aleatório exclusivo com modo 0600 por `dirfd`, não segue symlink, confirma escrita/leitura, sincroniza e remove o arquivo. Ele não expõe upload, chave de negócio nem a interface FileStorage operacional prevista para CL-05.
+
 ## Runtimes e dependências
 
 | Camada | Linha escolhida | Política |
@@ -35,7 +43,7 @@ Sem serviços externos obrigatórios. WhatsApp é destino de navegação volunt�
 | Complementos frontend | Primitives Radix 1.x via componentes shadcn selecionados; lucide-react; clsx/tailwind-merge; Sonner; TanStack Query 5.x | ClientOps controla wrappers; Query apenas no espaço autenticado |
 | Testes/tooling | pytest, HTTPX, Ruff, mypy; Vitest 4.x, RTL, Playwright 1.x, axe-core, ESLint, Prettier, openapi-typescript | Versões exatas no lock; pypdf apenas teste de relatório |
 
-CL-01 fixa patches estáveis compatíveis, imagens por digest, package-lock.json e uv.lock (uv 0.x com versão exata registrada). Isso é resolução mecânica de dependências e correções de segurança, não decisão arquitetural em aberto. Nada usa latest em CI/deploy. Dependências de fases futuras só entram quando usadas. Falha de resolução deve ser registrada antes de mudar major. Evidências documentais e limites da verificação estão em [DECISIONS](DECISIONS.md); não se afirma que esta combinação foi instalada/testada em CL-00.
+CL-01 resolveu Python 3.13.15, uv 0.12.19, Node 24.21.0, npm 11.19.0 e PostgreSQL 17.6. `backend/uv.lock`, `frontend/package-lock.json` e `infra/images.env` congelam dependências e digests. Nada usa `latest`; dependências de fases futuras só entram quando usadas. As versões diretas resolvidas e os comandos de verificação estão em [TESTING](TESTING.md).
 
 ## Monorepo final
 
@@ -118,9 +126,9 @@ Comando generate_reports a cada minuto, separado das três automações comercia
 
 Falha persiste código sanitizado e incrementa attempts; intervalos após falhas 1–5: 1, 5, 30, 120, 360 minutos; após sexta falha, next_attempt_at nulo e retry manual Admin. Retry manual reinicia contador de ciclo, preserva total_attempts e snapshot. READY ignora retry e devolve referência atual. Limite por render 60 s/512 MiB em subprocesso; até um render simultâneo por instalação. CI validará 100 itens, 20 fotos e textos máximos, PDF até 30 MiB. Esses limites são gates futuros, não resultados medidos.
 
-## Jobs e Docker futuro
+## Jobs e Docker
 
-Compose terá web (build frontend servido por proxy), api, db, migrate (one-shot) e scheduler (cron simples + mesma imagem API). Volumes pg_data e private_files; web não monta private_files. API/scheduler sem root. db health → migrate upgrade head → api readiness → web; scheduler inicia após migration. TLS termina no proxy da instalação. Dev usa Vite proxy /api; alternativa de origem distinta usa allowlist explícita. V1 inicia com uma réplica API e um processo Uvicorn, que limita dois decodes e dois hashes simultâneos; limites de rate continuam no PostgreSQL. Aumentar workers exige manter tetos de CPU/memória por instalação e provar SEC-04/UP-09, não apenas multiplicar semáforos locais.
+CL-01 implementa web (build frontend servido por proxy), api, db e migrate one-shot. A ordem é db saudável → migrate concluído → api pronta → web. Volumes `pg_data` e `private_files` são persistentes; web não monta `private_files`. TLS termina no proxy. A API usa uma réplica e um processo Uvicorn. O scheduler final continua parte da arquitetura, mas só será criado em CL-05 junto do primeiro job técnico executável; CL-01 não mantém processo inerte.
 
 Objetivo futuro: docker compose up --build; provisionar segredos por arquivo externo/secret store antes. Inicializar Admin exige comando explícito com senha por TTY; startup nunca cria conta/senha default. Frontend só recebe configurações públicas. API não precisa de internet para executar atendimento.
 
@@ -159,4 +167,8 @@ R=required; O=optional com default; S=secret; P=pública. Validação de config 
 
 Cookie e limites de upload/rate são constantes versionadas do contrato, não opções livres por usuário. Sessões opacas dispensam chave global de assinatura: hash SHA-256 no banco; CSRF_HMAC_KEY tem finalidade distinta. Timezone e dados da empresa ficam em BusinessProfile, não em env; comandos capturam sua versão ao gerar snapshots. O singleton inicial tem trade_name, phone, email, address e timezone em NULL. Em CL-02, Admin preenche onboarding e escolhe explicitamente timezone IANA, sem valor pré-selecionado ou fallback de produção. is_complete é calculado pelo domínio sobre exatamente esses cinco campos válidos; logo é opcional. Send de Quote e start de OS exigem is_complete=true, sob lock, ou retornam BUSINESS_PROFILE_INCOMPLETE. Após completar, não permitir limpar campos essenciais; timezone escolhida só muda para outra válida. America/Bahia fica exclusivamente no seed Climatech/fixtures específicas. Sem timezone, regras civis aguardam configuração conforme DOMAIN/API; health/login e onboarding continuam disponíveis.
 
-Schema inicial mínimo CL-01: metadados Alembic (alembic_version), primeira revisão vazia revisada, conexão e readiness; nenhuma tabela de domínio antecipada. CL-02 acrescenta business_profiles, users, sessions, rate_limit_buckets e timeline_events; demais tabelas nas fases respectivas. Índices/constraints são especificados em DOMAIN; sem migrations nesta execução.
+Schema inicial CL-01: metadados Alembic (`alembic_version`), revisão vazia `0001_foundation`, conexão e readiness; nenhuma tabela de domínio foi antecipada. `alembic check` não detectou drift. CL-02 acrescentará business_profiles, users, sessions, rate_limit_buckets e timeline_events; demais tabelas entram nas fases respectivas.
+
+### Operação de credenciais locais
+
+As senhas PostgreSQL do bootstrap são aplicadas apenas quando `pg_data` é inicializado. Regenerar `.local/compose.env` com `infra/dev-env.py --force` e manter um volume existente não altera as roles dentro do banco e causa incompatibilidade. Rotação futura deve atualizar banco e configuração de forma coordenada. Remover `pg_data` é aceitável somente em ambiente descartável sem dados relevantes; recriar containers com `docker compose down` preserva ambos os volumes.

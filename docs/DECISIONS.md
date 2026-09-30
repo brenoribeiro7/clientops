@@ -226,3 +226,11 @@ As correções dos sete findings estão consolidadas para reauditoria; matriz de
 As fontes de biblioteca acima foram consultadas no CL-00 original; Web Share/CSP3 foram consultadas na correção CL-00-FIX. Nenhum benchmark, teste de produto, dispositivo iPhone, instalação, Docker ou CI foi executado nesta correção. Afirmação de compatibilidade empírica desta aplicação permanece **não verificada** até os gates correspondentes; recursos documentados de biblioteca não equivalem a sucesso da aplicação.
 
 Riscos residuais concretos: host/volume único e restore necessário; link pode ser encaminhado por quem o possui; custos Argon2/decode e layout PDF ainda precisam das medições/fixtures previstas; compatibilidade da aquisição de foto real em iPhone aguarda UP-11, sem presumir formato. Root corrigido, limitação Git/toolchain e read-first estão em PHASES, sem inventar branch/HEAD/diff.
+
+## Registro de execução CL-01 — 30/09/2026
+
+As decisões D01–D12 não foram reabertas. A resolução mecânica escolheu Python 3.13.15/uv 0.12.19, Node 24.21.0/npm 11.19.0, PostgreSQL 17.6 e patches exatos nos dois locks. Radix, TanStack Query e Sonner não entraram porque a Foundation não possui consumidor; o Drawer usa `<dialog>` nativo e CSS externo. Pillow e fpdf2 continuam adiados para CL-05.
+
+O scheduler também foi adiado para CL-05 em vez de criar um processo inerte. CL-01 implementou somente o probe técnico do volume necessário ao readiness, sem interface FileStorage operacional. A topologia final de D12 permanece válida por fases: a composição Foundation atual possui web/api/db/migrate e os dois volumes; os serviços futuros entram quando tiverem trabalho real.
+
+O workflow local foi criado com Actions por SHA, imagens por digest, locks congelados e gate agregado que examina todos os jobs. Até existir destino GitHub autorizado e run no SHA final, esse arquivo é implementação auditada localmente, não evidência de CI real.

@@ -1,6 +1,6 @@
 # ClientOps — fases, gates e evidências
 
-Cada fase precisa satisfazer o gate anterior e entregar evidência real. O gate original CL-00 foi rejeitado pela auditoria independente. Esta execução é exclusivamente **CL-00-FIX documental**, cujo resultado habilita nova auditoria, sem autorizar CL-01. Não há implementação, instalação, Git init, commit/push/PR.
+Cada fase precisa satisfazer o gate anterior e entregar evidência real. O parágrafo abaixo preserva o histórico da correção documental CL-00-FIX; o estado operacional atual da Foundation está na seção “Execução CL-01”.
 
 ## Read-first original — histórico CL-00 em 25/09/2026
 
@@ -155,7 +155,19 @@ Resolver patches compatíveis e validar ambiente não reabre essas escolhas. Mud
 | Git/toolchain disponíveis | FAIL — Git, Node, npm, uv e Docker ausentes do PATH; Python disponível 3.12.3, alvo 3.13.x; nenhuma instalação autorizada no FIX |
 | Reauditoria independente aceita | Pendente — esta entrega será submetida à reauditoria |
 
-Portanto CL-01 **não pode prosseguir** neste ambiente/estado. Isso não impede a correção documental solicitada nem equivale a finding B01 não corrigido: root e regra de bloqueio foram estabelecidos, sem bootstrap.
+Na data da correção CL-00-FIX, CL-01 **não podia prosseguir** naquele ambiente/estado. Esse registro é histórico e foi superado pelo preflight posterior descrito abaixo.
+
+## Execução CL-01 — 30/09/2026
+
+O preflight posterior estabeleceu o root `/home/breno/Projects/clientops`, Git funcional, Python 3.13.15, uv 0.12.19, Node 24.21.0, npm 11.19.0, Docker 29.1.3 e Compose 2.40.3. O baseline dos nove documentos está no commit `84f7c4a`; a implementação ocorre em `feat/cl-01-foundation`, sem merge para `main`.
+
+A Foundation local está implementada: locks, FastAPI/config/Clock/erros/logs, PostgreSQL 17 com roles separadas, revisão vazia `0001_foundation`, health live/ready, probe técnico do volume, shells React, Nginx/CSP/TLS, contratos OpenAPI→TypeScript, Compose, testes e workflow. Scheduler e FileStorage operacional permanecem CL-05. Nenhuma entidade ou autenticação CL-02+ foi criada.
+
+T01–T24 passaram localmente; a matriz e os comandos estão em TESTING. O ciclo real de banco indisponível preservou live 200, produziu ready 503 e recuperou ready 200 sem restart da API. A recriação de containers sem `--volumes` preservou `pg_data`, revisão `0001_foundation` e marcador 0600 de `private_files`; apenas o marcador de teste foi removido.
+
+O workflow define `backend-quality`, `frontend-quality`, `database-migration`, `contract-drift`, `compose-smoke`, `security-foundation` e `cl01-gate`. O gate usa `!cancelled()` para preservar cancelamento do workflow e, nos demais resultados, exige `success` de cada job; failure/skipped ou qualquer valor diferente falha o gate. Como nenhum remote foi autorizado, publicação e CI real continuam bloqueadas e não são tratadas como PASS local.
+
+Durante a execução, o uso de `infra/dev-env.py --force` regenerou credenciais enquanto o volume PostgreSQL descartável ainda guardava as anteriores. Somente esse `pg_data` técnico sem dados relevantes foi removido; `private_files` foi preservado. O procedimento operacional agora proíbe essa rotação sobre volume persistido e exige coordenação explícita futura.
 
 ## Reauditoria interna CL-00-FIX
 

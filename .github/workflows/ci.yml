@@ -1,0 +1,187 @@
+name: CL-01 Foundation
+
+on:
+  pull_request:
+  push:
+    branches: [main, "feat/**"]
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: 3.13.15
+  UV_VERSION: 0.12.19
+  NODE_VERSION: 24.21.0
+  NPM_VERSION: 11.19.0
+
+jobs:
+  backend-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - run: uv sync --locked
+        working-directory: backend
+      - run: uv run --locked ruff check .
+        working-directory: backend
+      - run: uv run --locked ruff format --check .
+        working-directory: backend
+      - run: uv run --locked mypy
+        working-directory: backend
+      - run: uv run --locked pytest -m "not postgres and not compose and not artifacts"
+        working-directory: backend
+
+  frontend-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm install --global npm@${NPM_VERSION}
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run format:check
+        working-directory: frontend
+      - run: npm run lint
+        working-directory: frontend
+      - run: npm run typecheck
+        working-directory: frontend
+      - run: npm run test:unit
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+
+  database-migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: python infra/dev-env.py
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env pull db
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml build migrate test
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env up -d --wait --wait-timeout 180 db
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env run --rm migrate
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env run --rm migrate alembic check
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm test pytest -m postgres
+      - if: ${{ always() }}
+        run: docker compose --env-file infra/images.env --env-file .local/compose.env down --volumes --remove-orphans
+
+  contract-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm install --global npm@${NPM_VERSION}
+      - run: uv sync --locked
+        working-directory: backend
+      - run: npm ci
+        working-directory: frontend
+      - run: uv run --locked python -m app.cli.export_openapi --check ../frontend/src/contracts/openapi.json
+        working-directory: backend
+      - run: npm run contracts:check
+        working-directory: frontend
+
+  compose-smoke:
+    needs:
+      [backend-quality, frontend-quality, database-migration, contract-drift]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm install --global npm@${NPM_VERSION}
+      - run: uv sync --locked
+        working-directory: backend
+      - run: npm ci && npm run build
+        working-directory: frontend
+      - run: python infra/dev-env.py
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env build
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml up -d --wait --wait-timeout 180
+      - run: uv run --locked pytest -m "compose or artifacts"
+        working-directory: backend
+      - if: ${{ always() }}
+        run: docker compose --env-file infra/images.env --env-file .local/compose.env down --volumes --remove-orphans
+
+  security-foundation:
+    needs:
+      [backend-quality, frontend-quality, database-migration, contract-drift]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: python infra/dev-env.py --tls
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml build browser-test
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml up -d --wait --wait-timeout 180
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm browser-test
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml down
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml -f compose.tls.yaml up -d --wait --wait-timeout 180
+      - run: >-
+          docker compose --env-file infra/images.env --env-file .local/compose.env
+          -f compose.yaml -f compose.test.yaml run --rm --no-deps
+          -e CLIENTOPS_E2E_BASE_URL=https://web:8443 browser-test
+          npm run test:e2e -- --project=chromium-390 security.spec.ts
+      - if: ${{ always() }}
+        run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml -f compose.tls.yaml down --volumes --remove-orphans
+
+  cl01-gate:
+    if: ${{ !cancelled() }}
+    needs:
+      - backend-quality
+      - frontend-quality
+      - database-migration
+      - contract-drift
+      - compose-smoke
+      - security-foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every CL-01 job to succeed
+        env:
+          BACKEND_QUALITY: ${{ needs.backend-quality.result }}
+          FRONTEND_QUALITY: ${{ needs.frontend-quality.result }}
+          DATABASE_MIGRATION: ${{ needs.database-migration.result }}
+          CONTRACT_DRIFT: ${{ needs.contract-drift.result }}
+          COMPOSE_SMOKE: ${{ needs.compose-smoke.result }}
+          SECURITY_FOUNDATION: ${{ needs.security-foundation.result }}
+        run: |
+          for result in \
+            "$BACKEND_QUALITY" \
+            "$FRONTEND_QUALITY" \
+            "$DATABASE_MIGRATION" \
+            "$CONTRACT_DRIFT" \
+            "$COMPOSE_SMOKE" \
+            "$SECURITY_FOUNDATION"
+          do
+            test "$result" = success
+          done

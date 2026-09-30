@@ -17,6 +17,24 @@ def test_not_found_uses_sanitized_envelope(client: TestClient) -> None:
     assert "does-not-exist" not in response.text
 
 
+def test_validation_error_does_not_echo_rejected_input(settings: ApiSettings) -> None:
+    app = create_app(settings)
+
+    @app.get("/_test/items/{item_id}")
+    def item(item_id: int) -> dict[str, int]:
+        return {"item_id": item_id}
+
+    marker = "raw-sensitive-value"
+    with TestClient(app) as client:
+        response = client.get(f"/_test/items/{marker}")
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert response.json()["error"]["fields"] == [
+        {"field": "item_id", "message": "Valor inválido."}
+    ]
+    assert marker not in response.text
+
+
 def test_foundation_error_has_stable_contract(settings: ApiSettings) -> None:
     app: FastAPI = create_app(settings)
 
@@ -33,3 +51,17 @@ def test_foundation_error_has_stable_contract(settings: ApiSettings) -> None:
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "TEMPORARILY_UNAVAILABLE"
     assert response.headers["cache-control"] == "no-store"
+
+
+def test_unexpected_error_is_sanitized(settings: ApiSettings) -> None:
+    app = create_app(settings)
+
+    @app.get("/_test/unexpected")
+    def unexpected() -> None:
+        raise RuntimeError("database-password-sensitive-marker")
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get("/_test/unexpected")
+    assert response.status_code == 500
+    assert response.json()["error"]["code"] == "INTERNAL_ERROR"
+    assert "sensitive-marker" not in response.text

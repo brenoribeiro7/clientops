@@ -24,6 +24,13 @@ for (const path of ["/q", "/login", "/admin/deep", "/tech/deep"]) {
     expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
     expect(response?.headers()["x-frame-options"]).toBe("DENY");
     expect(response?.headers()["cache-control"]).toBe("no-store");
+    if (response?.url().startsWith("https://")) {
+      expect(response.headers()["strict-transport-security"]).toBe(
+        "max-age=31536000",
+      );
+    } else {
+      expect(response?.headers()["strict-transport-security"]).toBeUndefined();
+    }
     expect(await page.locator("[style]").count()).toBe(0);
 
     await page.evaluate(() => {

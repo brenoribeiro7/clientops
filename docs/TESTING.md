@@ -1,6 +1,6 @@
 # ClientOps — testes e CI
 
-Gates orientados a riscos: autorização, histórico, valores e transições corretas; porcentagem de coverage não substitui esses critérios. **Nenhum teste do produto foi executado em CL-00:** não existe implementação. Este arquivo especifica trabalho futuro.
+Gates orientados a riscos: autorização, histórico, valores e transições corretas; porcentagem de coverage não substitui esses critérios. **Nenhum teste do produto foi executado em CL-00:** esse registro continua histórico. A seção “Evidência CL-01” registra a Foundation executada em 30/09/2026; testes comerciais continuam futuros.
 
 ## Camadas
 
@@ -177,5 +177,46 @@ GitHub Actions contents:read por padrão, actions por SHA/imagens por digest; PR
 Gates anteriores continuam executando. Fluxos críticos em3 engines conforme entram; UI4 viewports, Hero técnico390/Admin1440. Safari real/iOS e Android Chrome recebem smoke manual no release; Playwright WebKit não substitui esses ambientes. UP-11 é gate manual explícito CL-05/CL-06 com evidência real vinculada à fase/release, além do CI automatizado. Nenhum teste de Web Share é exigido se a melhoria opcional não for implementada.
 
 Evidência deve registrar comando/job, versões/env, clock/fixtures e resultado passed/failed; “planejado” nunca é PASS de runtime. Release exige zero falhas críticas e Hero/segurança/histórico comprovados. Coverage auxilia identificação de lacunas; flaky exige causa corrigida.
+
+## Evidência CL-01 — 30/09/2026
+
+Toolchain local: Python 3.13.15, uv 0.12.19, Node 24.21.0, npm 11.19.0, Docker 29.1.3 e Compose 2.40.3. Os locks foram conferidos com `uv lock --check`, `uv sync --locked` e `npm ci`. SHA-256: `uv.lock` = `95dea2545c85cc97e054214634dfa596b6c92835f4e34ba5b9b126697484fe8c`; `package-lock.json` = `43b44efa5008ecaf9942993d85c0f7e401d406a7d49ece2a4c9621e691fd3341`.
+
+Dependências backend diretas: Alembic 1.20.0, FastAPI 0.141.1, psycopg 3.3.6, Pydantic 2.13.5, pydantic-settings 2.15.0, SQLAlchemy 2.0.54 e Uvicorn 0.54.0. Ferramentas backend: HTTPX 0.28.1, mypy 2.3.1, pytest 9.1.1, pytest-cov 7.1.0 e Ruff 0.16.9. Dependências frontend diretas: React/React DOM 19.3.0, React Router 7.18.4, TypeScript 5.9.3, Vite 8.3.1, Tailwind 4.3.3, Vitest 4.1.11, Playwright 1.63.0, openapi-typescript 7.13.0, lucide-react 1.48.0, clsx 2.1.1 e tailwind-merge 3.7.0.
+
+Imagens fixadas em `infra/images.env`: Python `sha256:2325bb286ec344af3e5898cc224b5844e2707ac6e26b1632516fd3edc84a5e26`; uv `sha256:04d046b13e60d6bcec73cbc5e1cad25d680dea90c8573340950a0ac2d1aef424`; Node `sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6`; PostgreSQL `sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3`; Nginx `sha256:ce2bd4775ed6859d35f47d65401ee9f35f1dd00b32ed05f0ce38b68aa1830195`; Playwright `sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27`.
+
+Comandos locais de qualidade são os documentados no README. PostgreSQL real usa `docker compose ... run --rm test pytest -m postgres`; os testes Compose/artefatos usam `uv run --locked pytest -m "compose or artifacts"`. A matriz browser roda dentro da imagem Playwright fixada com `docker compose ... run --rm browser-test`; a prova TLS usa a mesma imagem contra `https://web:8443`.
+
+| ID | Estado local | Evidência CL-01 |
+|---|---|---|
+| T01 | PASS | Versões aprovadas, `uv lock --check`, `uv sync --locked`, `npm ci`, dois locks sem alteração |
+| T02 | PASS | pytest `test_config.py`: validação fail-fast e valores secretos sanitizados |
+| T03 | PASS | pytest `test_clock.py`: UTC/FakeClock determinísticos |
+| T04 | PASS | pytest `test_errors.py`: envelopes 404/422/500 sem detalhes internos |
+| T05 | PASS | pytest `test_request_logging.py`: UUID, logs allowlist e proxy confiável/não confiável |
+| T06 | PASS | pytest health e queda real do PostgreSQL: live continua 200 |
+| T07 | PASS | PostgreSQL 17 + revisão exata + volume: ready 200 mínimo |
+| T08 | PASS | `test_compose_lifecycle.py`: DB parado produz ready 503 sanitizado/live 200 e recupera ready 200 sem restart da API |
+| T09 | PASS | `test_migrations.py`: revisão stale produz 503 e revisão correta recupera 200 |
+| T10 | PASS | `test_storage_health.py` + container UID 10001: permissões, symlink, limpeza e probe real |
+| T11 | PASS | PostgreSQL 17 vazio: somente `alembic_version=0001_foundation`; upgrade/check sem drift |
+| T12 | PASS | role runtime lê revisão e recebe erro ao tentar DDL |
+| T13 | PASS | dois processos Alembic concorrentes terminam 0 e mantêm a revisão exata |
+| T14 | PASS | 7 testes Vitest/RTL + Playwright nas quatro larguras: três shells sem conteúdo comercial |
+| T15 | PASS | Playwright/Nginx: rotas, deep links, 404; API/assets não usam fallback SPA |
+| T16 | PASS | RTL/user-event + Playwright/axe: teclado, foco, Drawer, landmarks, reflow, zero serious/critical |
+| T17 | PASS | Playwright nos três engines: CSP real em `/q`, `/login`, `/admin/*`, `/tech/*`; inline bloqueado |
+| T18 | PASS | HTTP e HTTPS reais: cache/headers corretos; HSTS somente em HTTPS |
+| T19 | PASS | ESLint, Prettier, TypeScript, Vitest e Vite build concluídos com exit 0 |
+| T20 | PASS | export OpenAPI determinístico, `openapi-typescript --check` e cópia stale rejeitada |
+| T21 | PASS | cold start db→migrate→api→web e ciclo real de falha/recuperação; migration precede API |
+| T22 | PASS | containers removidos sem volumes: revisão e marcador 0600 persistiram; marcador de teste removido |
+| T23 | PASS | scans do bundle, histórico de imagens e logs não encontraram os segredos sentinela |
+| T24 | PASS | inspeção Compose: só web publicado; DB/API privados; web sem `private_files`; ready interno |
+
+A execução browser completa registrou 87 PASS e 3 skips. Os skips são o teste `Drawer administrativo restaura foco` em Chromium 1024, Chromium 1440 e Firefox 1440: nesses viewports a sidebar substitui o Drawer. Cobertura equivalente passa em Chromium 390, Chromium 768 e WebKit 390; nenhum job ou engine foi pulado. O subconjunto SEC-05 em HTTPS registrou mais 6 PASS.
+
+O workflow GitHub Actions está implementado e tem teste estático para SHAs, padrões proibidos e resultados do gate. Não existe remote autorizado; portanto não há run real e nenhum estado de CI é declarado PASS. O incidente local de `dev-env.py --force` confirmou que credenciais regeneradas não atualizam roles de um `pg_data` já inicializado. Rotação exige procedimento coordenado; apagar volume só é permitido em ambiente descartável.
 
 [SQLAlchemy version counter](https://docs.sqlalchemy.org/en/20/orm/versioning.html) cobre o caminho de flush; bulk updates exigiriam proteção própria e são evitados. [Alembic autogenerate/check](https://alembic.sqlalchemy.org/en/latest/autogenerate.html) documenta limites de detecção; constraints críticas têm inspeção adicional. São evidências documentais, não execução nesta fase.

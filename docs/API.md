@@ -1,6 +1,6 @@
 # ClientOps — contrato REST v1
 
-Especificação HTTP para implementação posterior. Prefixo **/api/v1**; exemplos omitem host. [DOMAIN](DOMAIN.md) fixa campos, tipos, limites e regras; [SECURITY](SECURITY.md) fixa credenciais. Nenhum endpoint foi implementado em CL-00.
+Especificação HTTP do produto. Prefixo **/api/v1**; exemplos omitem host. [DOMAIN](DOMAIN.md) fixa campos, tipos, limites e regras; [SECURITY](SECURITY.md) fixa credenciais. CL-01 implementa somente `/health/live` e `/health/ready`; os endpoints comerciais continuam reservados às fases posteriores.
 
 ## Convenções
 
@@ -228,8 +228,8 @@ CONFIRMED: {resolution:"CONFIRMED",customer_name:"Pessoa Exemplo",explicit_confi
 | GET /clients/{id}/timeline | A | page,page_size | Eventos do cliente |
 | GET /quotes/{id}/timeline | A | page,page_size | Eventos do orçamento |
 | GET /service-orders/{id}/timeline | A/T | page,page_size | Eventos filtrados por papel |
-| GET /health/live | - | — | 200 {"status":"ok"}, sem configs |
-| GET /health/ready | - interno | — | 200/503 DB+migration+storage acessíveis, sem segredos |
+| GET /health/live | - | — | 200 {"status":"ok"}, sem configs; independente de DB/storage |
+| GET /health/ready | - interno | — | 200/503 DB+migration exata+probe storage acessíveis, envelope sanitizado; proxy externo retorna 404 |
 
 PDF download inclui Content-Disposition: attachment; filename="OS-000123.pdf", Content-Length, no-store,nosniff. Antes de enviar headers de sucesso, verificar existência, tamanho e SHA-256 dos bytes contra metadata (máximo30MiB); ausência/corrupção retorna503 STORAGE_UNAVAILABLE e log de incidente, sem re-render. Report falhou: metadata tem código sanitizado e retry habilitado; sem stack/path. Não há link público, arquivo base64 nem regenerate READY. Retry não duplica fila: representa eligibility na própria linha report.
 
