@@ -1,0 +1,53 @@
+services:
+  api:
+    environment:
+      TRUSTED_HOSTS: localhost,127.0.0.1,api,web
+
+  test:
+    profiles: ["testing"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: test
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE}
+        UV_IMAGE: ${UV_IMAGE}
+    environment:
+      APP_ENV: test
+      DATABASE_URL: ${DATABASE_URL:?required}
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:?required}
+      CSRF_HMAC_KEY: ${CSRF_HMAC_KEY:?required}
+      RATE_LIMIT_HMAC_KEY: ${RATE_LIMIT_HMAC_KEY:?required}
+      PUBLIC_BASE_URL: http://web:8080
+      TRUSTED_ORIGINS: http://web:8080
+      TRUSTED_HOSTS: testserver,api,web,localhost
+      TRUSTED_PROXY_CIDRS: 172.28.0.2/32
+      PRIVATE_STORAGE_ROOT: /var/lib/clientops/private
+      LOG_LEVEL: INFO
+    volumes:
+      - private_files:/var/lib/clientops/private
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+    restart: "no"
+
+  browser-test:
+    profiles: ["testing"]
+    build:
+      context: .
+      dockerfile: infra/e2e/Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE}
+        PLAYWRIGHT_IMAGE: ${PLAYWRIGHT_IMAGE}
+    environment:
+      CLIENTOPS_E2E_BASE_URL: http://web:8080
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - edge
+    restart: "no"
