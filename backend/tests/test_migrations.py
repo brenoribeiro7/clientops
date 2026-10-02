@@ -20,14 +20,21 @@ def _required_url(name: str) -> str:
 
 
 @pytest.mark.postgres
-def test_empty_foundation_schema_has_only_alembic_version() -> None:
+def test_cl02_schema_contains_exactly_the_five_phase_tables() -> None:
     engine = create_engine(_required_url("MIGRATION_DATABASE_URL"))
     try:
-        assert inspect(engine).get_table_names(schema="public") == ["alembic_version"]
+        assert set(inspect(engine).get_table_names(schema="public")) == {
+            "alembic_version",
+            "business_profiles",
+            "rate_limit_buckets",
+            "sessions",
+            "timeline_events",
+            "users",
+        }
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0001_foundation"
+                == "0002_identity_sessions_security"
             )
     finally:
         engine.dispose()
@@ -40,7 +47,7 @@ def test_runtime_role_can_read_revision_but_cannot_execute_ddl() -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0001_foundation"
+                == "0002_identity_sessions_security"
             )
             with pytest.raises(DBAPIError):
                 connection.execute(text("CREATE TABLE forbidden_runtime_ddl (id integer)"))
@@ -65,12 +72,16 @@ def test_readiness_rejects_and_recovers_from_migration_mismatch() -> None:
         with TestClient(create_app(settings)) as client:
             assert client.get("/api/v1/health/ready").status_code == 503
         with migration_engine.begin() as connection:
-            connection.execute(text("UPDATE alembic_version SET version_num='0001_foundation'"))
+            connection.execute(
+                text("UPDATE alembic_version SET version_num='0002_identity_sessions_security'")
+            )
         with TestClient(create_app(settings)) as client:
             assert client.get("/api/v1/health/ready").status_code == 200
     finally:
         with migration_engine.begin() as connection:
-            connection.execute(text("UPDATE alembic_version SET version_num='0001_foundation'"))
+            connection.execute(
+                text("UPDATE alembic_version SET version_num='0002_identity_sessions_security'")
+            )
         migration_engine.dispose()
 
 
@@ -87,3 +98,31 @@ def test_concurrent_migrators_finish_consistently() -> None:
     ]
     results = [process.communicate(timeout=30) for process in processes]
     assert [process.returncode for process in processes] == [0, 0], results
+
+
+@pytest.mark.postgres
+def test_runtime_grants_are_least_privilege() -> None:
+    engine = create_engine(_required_url("DATABASE_URL"))
+    try:
+        with engine.begin() as connection:
+            grants = {
+                (row.table_name, row.privilege_type)
+                for row in connection.execute(
+                    text(
+                        "SELECT table_name, privilege_type "
+                        "FROM information_schema.role_table_grants "
+                        "WHERE grantee = current_user AND table_schema = 'public'"
+                    )
+                )
+            }
+        assert {privilege for table, privilege in grants if table == "business_profiles"} == {
+            "SELECT",
+            "UPDATE",
+        }
+        assert {privilege for table, privilege in grants if table == "timeline_events"} == {
+            "SELECT",
+            "INSERT",
+        }
+        assert all(privilege not in {"TRUNCATE", "DELETE"} for _, privilege in grants)
+    finally:
+        engine.dispose()

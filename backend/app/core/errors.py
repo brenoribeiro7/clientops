@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -28,11 +28,21 @@ class ErrorResponse(BaseModel):
 
 
 class FoundationError(Exception):
-    def __init__(self, *, status_code: int, code: str, message: str) -> None:
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        code: str,
+        message: str,
+        details: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
         super().__init__(code)
         self.status_code = status_code
         self.code = code
         self.message = message
+        self.details = dict(details or {})
+        self.headers = dict(headers or {})
 
 
 def _request_id(request: Request) -> str:
@@ -46,20 +56,26 @@ def _response(
     code: str,
     message: str,
     fields: Sequence[ErrorItem] = (),
+    details: Mapping[str, Any] | None = None,
+    headers: Mapping[str, str] | None = None,
 ) -> JSONResponse:
     body = ErrorResponse(
         error=ErrorBody(
             code=code,
             message=message,
             fields=list(fields),
-            details={},
+            details=dict(details or {}),
             request_id=_request_id(request),
         )
     )
     return JSONResponse(
         status_code=status_code,
         content=body.model_dump(mode="json"),
-        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+        headers={
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            **dict(headers or {}),
+        },
     )
 
 
@@ -71,6 +87,8 @@ def install_error_handlers(app: FastAPI) -> None:
             status_code=error.status_code,
             code=error.code,
             message=error.message,
+            details=error.details,
+            headers=error.headers,
         )
 
     @app.exception_handler(RequestValidationError)
