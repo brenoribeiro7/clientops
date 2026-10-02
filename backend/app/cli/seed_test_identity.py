@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from uuid import UUID
 
 from sqlalchemy import create_engine, select, text
@@ -79,7 +78,7 @@ def main() -> None:
                     occurred_at=now,
                 )
                 session.commit()
-        print(json.dumps({"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}))
+        print("Test identity fixture ready.")
     finally:
         engine.dispose()
 

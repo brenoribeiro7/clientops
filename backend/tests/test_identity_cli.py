@@ -33,5 +33,6 @@ def test_argon2_benchmark_reports_real_samples_without_password_material() -> No
         "hash_len": 32,
     }
     assert payload["measured_samples"] == 1
-    assert payload["milliseconds"]["median"] > 0
+    assert payload["hash_milliseconds"]["median"] > 0
+    assert payload["verify_milliseconds"]["median"] > 0
     assert "password" not in result.stdout.lower()
