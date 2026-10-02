@@ -154,3 +154,9 @@ CL-02 implementa Argon2id pelos parâmetros normativos, semaphore não bloqueant
 Sessões usam bearer CSPRNG de 32 bytes, cookie HttpOnly/Lax e somente SHA-256 no banco; idle 1800 s, absolute 43200 s, touch 60 s e cap de cinco sob lock do User. Comandos privados mantêm autorização, revalidação do User/Session e operação na mesma transação, serializados por advisory lock para que troca de senha, reset e disable não deixem um comando antigo continuar. Produção/demo usam `__Host-clientops_session; Secure`; desenvolvimento HTTP aceita somente localhost; o ambiente de teste Compose possui origem interna explícita. Origin/Referer e CSRF HMAC protegem toda mutation por cookie. O proxy confiável aceita exatamente um IP validado/normalizado e peers não confiáveis perdem `X-Forwarded-*`; logs recebem apenas o IP validado.
 
 Os buckets fixed-window guardam HMAC das chaves e não possuem limpeza automática na CL-02. A manutenção de buckets expirados por mais de 24 h permanece CL-05; decisões da janela corrente ignoram buckets de outras janelas pela chave primária temporal.
+
+## Controles implementados na CL-03
+
+Todas as rotas Client/Equipment/timeline exigem Admin antes do lookup; Técnico recebe 403 e IDs cruzados de Equipment recebem 404 uniforme. Queries de Equipment incluem simultaneamente `client_id` e `id`, e o schema rejeita `client_id` no corpo. A role runtime não pode atualizar ownership, IDs, `created_at` nem deletar; Client/Equipment usam grants UPDATE por coluna e timeline continua append-only.
+
+Mutations preservam Origin/CSRF da CL-02 e usam ETag, lock PostgreSQL e ordem Client→Equipment. Payload de timeline contém somente `equipment_id` e nomes de campos; valores de phone/email/address/notes não entram. Logs da aplicação usam route template sem query/body, e o formato nginx registra `$request_method $uri $server_protocol`, removendo argumentos. O E2E CL-03 desativa trace e screenshot para que os canários privados não sejam publicados.

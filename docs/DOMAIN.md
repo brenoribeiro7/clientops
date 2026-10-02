@@ -266,8 +266,10 @@ USER aponta usuário real; CUSTOMER_QUOTE_LINK aponta registro de acesso, sem af
 
 Login/logout/falhas de autenticação ficam em log de segurança, sem timeline operacional. Não registrar view público: GET permanece sem mutação comercial nem falsa comprovação de leitura. Listagem técnica filtra contexto da própria OS E tipos permitidos de execução (service, checklist, evidence, completion); exclui quote/charge/usuários/profile/alert/report e payload de cliente interno. Admin vê timeline de contexto, não feed irrestrito exposto ao cliente.
 
-## Subconjunto persistido na CL-02
+## Subconjunto persistido na CL-03
 
-O schema atual materializa somente BusinessProfile singleton, User, Session, RateLimitBucket e TimelineEvent nos contextos User/BusinessProfile. `is_complete`, `missing_fields`, `business_timezone` e `business_today` são derivados; timezone válida disponibiliza tempo civil mesmo com outro campo faltante. A timeline aceita apenas `user.created`, `user.disabled`, `user.enabled`, `user.password_reset`, `user.password_changed` e `business.updated`, com payload objeto de até 4 KiB e sem segredos.
+O schema atual materializa BusinessProfile singleton, User, Session, RateLimitBucket, Client, Equipment e TimelineEvent nos contextos User/BusinessProfile/Client. Client e Equipment alternam entre ACTIVE e ARCHIVED por comandos idempotentes versionados; o arquivamento do cliente preserva o estado dos equipamentos e bloqueia somente a criação de novos equipamentos. Equipment sempre pertence ao Client da rota e `client_id` não pode ser alterado.
 
-Client, Equipment, Quote, ServiceOrder, uploads, logo, Report, Charge, OperationalAlert e scheduler não foram antecipados.
+Client.email é texto genérico de contato: trim, blank para NULL, limite 254 e rejeição de controles, sem normalização de identidade, unicidade ou validação DNS. Busca de Client e Equipment consulta somente `name`, trata `%`, `_` e `\` como literais e usa `id` como desempate estável. A timeline CL-03 acrescenta os oito eventos client/equipment, nomes de campos alterados e `equipment_id`, sem valores de contato ou notas.
+
+Quote, ServiceOrder, uploads, logo, Report, Charge, OperationalAlert e scheduler não foram antecipados.

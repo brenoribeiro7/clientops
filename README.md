@@ -1,6 +1,6 @@
 # ClientOps
 
-ClientOps com a Foundation CL-01 e a implementação CL-02 de identidade, sessões, segurança e perfil da empresa. O repositório contém API FastAPI, aplicação React, PostgreSQL, migrations Alembic, proxy Nginx, composição Docker e testes locais/CI.
+ClientOps com a Foundation CL-01, identidade e segurança CL-02 e cadastro de clientes e equipamentos CL-03. O repositório contém API FastAPI, aplicação React, PostgreSQL, migrations Alembic, proxy Nginx, composição Docker e testes locais/CI.
 
 ## Toolchain fixada
 
@@ -25,7 +25,7 @@ A aplicação fica em `http://127.0.0.1:8080`. O host publica somente o proxy; A
 - `GET /api/v1/health/live`: processo HTTP vivo, inclusive durante falha do banco;
 - `GET /api/v1/health/ready`: uso interno, verifica PostgreSQL, revisão Alembic exata e probe do volume privado;
 - `/login` e `/change-password`: login e troca obrigatória de senha;
-- `/admin`, `/admin/account`, `/admin/settings` e `/admin/settings/users`: árvore privada do Admin;
+- `/admin`, `/admin/account`, `/admin/settings`, `/admin/settings/users`, `/admin/clients` e `/admin/clients/:clientId`: árvore privada do Admin;
 - `/tech/today` e `/tech/account`: árvore privada do Técnico;
 - `/q`: árvore pública isolada, ainda sem Quote até CL-04.
 
@@ -71,8 +71,8 @@ npm run test:unit
 npm run build
 ```
 
-Os testes PostgreSQL e Compose usam `.local/compose.env` e as imagens fixadas. O workflow `.github/workflows/ci.yml` preserva os jobs/gate CL-01 e acrescenta `identity-integration`, `identity-security`, `identity-e2e` e `cl02-gate`. A execução local valida o arquivo do workflow, mas somente um run do GitHub Actions no SHA publicado constitui evidência de CI real.
+Os testes PostgreSQL e Compose usam `.local/compose.env` e as imagens fixadas. O workflow `.github/workflows/ci.yml` preserva os gates CL-01/02 e acrescenta `clients-integration`, `clients-e2e` e `cl03-gate`, totalizando 14 jobs. A execução local valida o arquivo do workflow, mas somente um run do GitHub Actions no SHA publicado constitui evidência de CI real.
 
 ## Limites atuais
 
-CL-02 cria somente `business_profiles`, `users`, `sessions`, `rate_limit_buckets` e `timeline_events`. O FileStorage operacional, uploads, logo, relatórios e scheduler entram em CL-05; Client/Equipment começam em CL-03 e Quote em CL-04. Não há Redis, JWT, autenticação externa nem infraestrutura paga obrigatória.
+CL-03 acrescenta somente `clients`, `equipment` e o contexto opcional `timeline_events.client_id`. O FileStorage operacional, uploads, logo, relatórios e scheduler entram em CL-05; Quote começa em CL-04. Não há Redis, JWT, autenticação externa nem infraestrutura paga obrigatória.

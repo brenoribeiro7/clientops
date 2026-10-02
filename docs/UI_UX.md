@@ -226,3 +226,9 @@ Os tokens de cor, tipografia, espaçamento, raio, sombra e largura vêm deste co
 As rotas `/login`, `/change-password`, `/admin/account`, `/admin/settings`, `/admin/settings/users` e `/tech/account` são funcionais. Guards direcionam por papel e forçam a troca de senha temporária. O Admin salva onboarding parcial sem timezone pré-selecionada, vê `missing_fields`/data civil quando disponível e gerencia Técnicos. A senha temporária fica somente em estado React até o card ser fechado, com cópia por gesto; auth, CSRF e credenciais não usam localStorage/sessionStorage.
 
 `/q` permanece no `PublicLayout` isolado, sem provider/cache privado e sem request de sessão. A matriz Playwright CL-02 executa os fluxos reais em Chromium 390/768/1024/1440, Firefox 1440 e WebKit 390; a prova HTTPS adicional confirma o cookie `__Host-` Secure/HttpOnly/Lax em Chromium.
+
+## Clientes e equipamentos CL-03
+
+O Admin acessa `/admin/clients` pela navegação privada, filtra por status, pesquisa e ordena, e abre `/admin/clients/:clientId` para dados, equipamentos e histórico. Cadastro e edição usam labels explícitos, estados de loading/erro/vazio e ações de archive/restore em diálogo. Equipamentos existem somente dentro do detalhe do cliente; cliente arquivado mantém seus equipamentos visíveis e desabilita a inclusão com explicação associada.
+
+Conflito 412 preserva os valores locais, apresenta mensagem e oferece “Recarregar versão atual”; não há merge, overwrite ou retry automático. O Técnico não recebe item Clientes e um deep link Admin retorna ao shell técnico sem renderizar dados. Cards, filtros, diálogos e botões refluem sem overflow nas larguras 390, 768, 1024 e 1440; axe cobre as telas principais no E2E CL-03.

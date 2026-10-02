@@ -240,3 +240,18 @@ Execuções locais após a continuação: 50 testes pytest sem PostgreSQL, 34 te
 O fixture browser é CLI e recusa qualquer `APP_ENV` diferente de `test`; `--reset` usa a role migrator apenas no banco descartável do gate. O workflow preserva os jobs CL-01 e define `identity-integration`, `identity-security`, `identity-e2e` e `cl02-gate`. Resultado GitHub real pertence ao SHA publicado e é registrado no relatório de execução, evitando inserir um SHA auto-referente no commit.
 
 [SQLAlchemy version counter](https://docs.sqlalchemy.org/en/20/orm/versioning.html) cobre o caminho de flush; bulk updates exigiriam proteção própria e são evitados. [Alembic autogenerate/check](https://alembic.sqlalchemy.org/en/latest/autogenerate.html) documenta limites de detecção; constraints críticas têm inspeção adicional. São evidências documentais, não execução nesta fase.
+
+## Evidência CL-03
+
+CL-03 acrescenta testes de schema/grants e upgrade 0002→0003 com eventos CL-02 preservados; API real PostgreSQL cobre CRUD, ownership cruzado 404, mass assignment 422, archive/restore/no-op, busca literal, paginação, timeline allowlist, rollback e corridas coordenadas por barriers. A suíte prova two Client PATCH, archive/restore versus PATCH, two Equipment PATCH, create/mutation de Equipment versus archive do Client e stale ETag.
+
+Vitest cobre lista/detalhe/papel e preservação do formulário no 412. O spec `@cl03` executa login Admin, Client/Equipment completos, timeline, archive/restore, isolamento de ownership e negação Técnico na matriz fixa Chromium 390/768/1024/1440, Firefox 1440 e WebKit 390. O proxy usa `$uri` no access log; canários de body/query ficam ausentes de app/proxy logs e valores privados não entram na timeline ou em artifacts Playwright CL-03, que desativa screenshot e trace.
+
+| Requisito | Resultado CL-03 | Diferido |
+|---|---|---|
+| DOM-09 | PASS — CL-03 APPLICABLE SUBSET: archive/restore Client e Equipment, histórico preservado, sem cascade, ownership e bloqueio de novo Equipment em Client arquivado | seleção/send e snapshot Quote CL-04; execução/snapshot OS CL-05 |
+| AZ-01..06 | PASS — CL-03 APPLICABLE SUBSET: Clients/Equipment/timeline Admin-only e ownership aninhado | Quote CL-04; OS/arquivos CL-05 |
+| SEC-01/03/05 | PASS — CL-03 APPLICABLE SUBSET: CSRF/origin, payload/log allowlists, CSP e deep links | público Quote CL-04; multipart CL-05 |
+| CON-01 | PASS — CL-03 APPLICABLE SUBSET: versões, locks raiz, races Client/Equipment e timeline atômica | Quote/OS/Charge CL-04..06 |
+
+O workflow possui exatamente 14 jobs e `cl03-gate` exige sucesso explícito dos 13 jobs anteriores. Run e SHA finais são evidência externa do relatório de execução, sem criar referência auto-referente nestes documentos.
