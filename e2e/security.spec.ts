@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+test.use({ screenshot: "off", trace: "off" });
+
 const strictCsp = [
   "default-src 'self'",
   "script-src 'self'",

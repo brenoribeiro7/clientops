@@ -50,6 +50,18 @@ def test_cl01_gate_inspects_every_required_result_and_rejects_non_success() -> N
 
 
 @pytest.mark.artifacts
+def test_security_foundation_resets_identity_before_https_browser_checks() -> None:
+    content = WORKFLOW.read_text(encoding="utf-8")
+    job = content.split("  security-foundation:\n", maxsplit=1)[1].split(
+        "  cl01-gate:\n", maxsplit=1
+    )[0]
+    tls_start = job.index("-f compose.tls.yaml up -d")
+    reset = job.index("seed_test_identity --reset", tls_start)
+    https_check = job.index("CLIENTOPS_E2E_BASE_URL=https://web:8443", reset)
+    assert tls_start < reset < https_check
+
+
+@pytest.mark.artifacts
 def test_cl02_gate_inspects_every_required_result_and_rejects_non_success() -> None:
     content = WORKFLOW.read_text(encoding="utf-8")
     gate = content.split("  cl02-gate:\n", maxsplit=1)[1]

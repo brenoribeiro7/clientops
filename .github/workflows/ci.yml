@@ -147,6 +147,7 @@ jobs:
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm browser-test
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml down
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml -f compose.tls.yaml up -d --wait --wait-timeout 180
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm test python -m app.cli.seed_test_identity --reset
       - run: >-
           docker compose --env-file infra/images.env --env-file .local/compose.env
           -f compose.yaml -f compose.test.yaml run --rm --no-deps
