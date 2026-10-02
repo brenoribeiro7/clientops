@@ -6,7 +6,7 @@ from pathlib import Path
 from app.cli.export_openapi import generated_schema
 
 
-def test_openapi_generation_is_deterministic_and_cl02_scoped() -> None:
+def test_openapi_generation_is_deterministic_and_cl03_scoped() -> None:
     first = generated_schema()
     second = generated_schema()
     assert first == second
@@ -17,6 +17,15 @@ def test_openapi_generation_is_deterministic_and_cl02_scoped() -> None:
         "/api/v1/auth/logout",
         "/api/v1/auth/session",
         "/api/v1/business-profile",
+        "/api/v1/clients",
+        "/api/v1/clients/{client_id}",
+        "/api/v1/clients/{client_id}/archive",
+        "/api/v1/clients/{client_id}/equipment",
+        "/api/v1/clients/{client_id}/equipment/{equipment_id}",
+        "/api/v1/clients/{client_id}/equipment/{equipment_id}/archive",
+        "/api/v1/clients/{client_id}/equipment/{equipment_id}/restore",
+        "/api/v1/clients/{client_id}/restore",
+        "/api/v1/clients/{client_id}/timeline",
         "/api/v1/health/live",
         "/api/v1/health/ready",
         "/api/v1/users",
@@ -31,6 +40,8 @@ def test_openapi_generation_is_deterministic_and_cl02_scoped() -> None:
         "type": "apiKey",
     }
     assert b"Quote" not in first
+    assert b"ServiceOrder" not in first
+    assert all("delete" not in operations for operations in schema["paths"].values())
 
 
 def test_openapi_check_rejects_a_stale_copy(tmp_path: Path) -> None:
