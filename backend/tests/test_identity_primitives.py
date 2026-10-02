@@ -209,9 +209,12 @@ def test_business_profile_completeness_is_independent_from_available_civil_time(
         updated_at=datetime(2026, 6, 2, 1, 0, tzinfo=UTC),
         version=1,
     )
-    data = serialize(profile, datetime(2026, 6, 2, 1, 0, tzinfo=UTC))
+    data = serialize(profile, datetime(2026, 6, 2, 2, 59, 59, tzinfo=UTC))
     assert not data.is_complete
     assert data.missing_fields == [missing]
     assert data.business_timezone == "America/Bahia"
     assert data.business_today is not None
     assert data.business_today.isoformat() == "2026-06-01"
+    after_midnight = serialize(profile, datetime(2026, 6, 2, 3, 0, tzinfo=UTC))
+    assert after_midnight.business_today is not None
+    assert after_midnight.business_today.isoformat() == "2026-06-02"

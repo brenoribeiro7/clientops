@@ -12,6 +12,7 @@ from threading import Barrier, Event
 from uuid import UUID, uuid4
 
 import pytest
+from argon2 import PasswordHasher
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, func, select, text, update
 from sqlalchemy.engine import Engine
@@ -29,7 +30,7 @@ from app.modules.business.schemas import BusinessProfilePatch
 from app.modules.business.service import update_profile
 from app.modules.identity.models import Session as SessionModel
 from app.modules.identity.models import User
-from app.modules.identity.passwords import hash_password, verify_password
+from app.modules.identity.passwords import hash_password, needs_rehash, verify_password
 from app.modules.identity.service import authenticate, change_password, is_active, mutate_user
 from app.modules.timeline.models import TimelineEvent
 
@@ -401,6 +402,68 @@ def test_session_read_does_not_touch_but_private_command_does(identity: Harness)
 
 
 @pytest.mark.postgres
+def test_exact_absolute_and_idle_expiry_reject_reads_and_mutations(identity: Harness) -> None:
+    identity.user(email="admin@example.com", password="Boundary session password 2026")
+    identity.login("admin@example.com", "Boundary session password 2026")
+    with identity.factory() as session:
+        model = session.scalar(select(SessionModel))
+        assert model is not None
+        model.last_seen_at = model.absolute_expires_at - timedelta(seconds=1)
+        absolute = model.absolute_expires_at
+        session.commit()
+    identity.clock.current = absolute
+    assert identity.client.get("/api/v1/auth/session").status_code == 401
+    assert identity.client.get("/api/v1/business-profile").status_code == 401
+    identity.clock.current = NOW
+    identity.login("admin@example.com", "Boundary session password 2026")
+    identity.clock.current = NOW + timedelta(seconds=identity.settings.SESSION_IDLE_SECONDS)
+    assert identity.client.get("/api/v1/auth/session").status_code == 401
+    assert (
+        identity.client.patch(
+            "/api/v1/business-profile",
+            json={"trade_name": "Too late"},
+            headers=identity.mutation_headers('"v1"'),
+        ).status_code
+        == 401
+    )
+
+
+@pytest.mark.postgres
+def test_temporary_password_exact_24h_boundary_and_valid_login_rehash(identity: Harness) -> None:
+    identity.user(
+        email="temporary@example.com",
+        password="Temporary boundary password 2026",
+        role="TECHNICIAN",
+        temporary=True,
+    )
+    identity.clock.current = NOW + timedelta(hours=24) - timedelta(microseconds=1)
+    identity.login("temporary@example.com", "Temporary boundary password 2026")
+    identity.clock.current = NOW + timedelta(hours=24)
+    expired = identity.client.post(
+        "/api/v1/auth/login",
+        json={"email": "temporary@example.com", "password": "Temporary boundary password 2026"},
+        headers=LOGIN_HEADERS,
+    )
+    assert expired.status_code == 401
+    assert identity.client.get("/api/v1/auth/session").status_code == 401
+
+    identity.clock.current = NOW
+    user = identity.user(email="rehash@example.com", password="Valid rehash password 2026")
+    old_hasher = PasswordHasher(time_cost=2, memory_cost=65536, parallelism=4, hash_len=32)
+    with identity.factory() as session:
+        saved = session.get(User, user.id)
+        assert saved is not None
+        saved.password_hash = old_hasher.hash("Valid rehash password 2026")
+        assert needs_rehash(saved.password_hash)
+        session.commit()
+    identity.login("rehash@example.com", "Valid rehash password 2026")
+    with identity.factory() as session:
+        saved = session.get(User, user.id)
+        assert saved is not None and saved.version == 2
+        assert not needs_rehash(saved.password_hash)
+
+
+@pytest.mark.postgres
 def test_legacy_session_overflow_revokes_all_but_four_before_login(identity: Harness) -> None:
     user = identity.user(email="legacy@example.com", password="Legacy sessions password")
     with identity.factory() as session:
@@ -561,6 +624,12 @@ def test_business_profile_partial_complete_and_timezone_contract(identity: Harne
 def test_user_management_secrets_revocation_and_last_admin(identity: Harness) -> None:
     admin = identity.user(email="admin@example.com", password="User management password")
     session_data = identity.login("admin@example.com", "User management password")
+    overposted = identity.client.post(
+        "/api/v1/users",
+        json={"name": "Bad", "email": "bad@example.com", "role": "ADMIN"},
+        headers=identity.mutation_headers(),
+    )
+    assert overposted.status_code == 422
     created = identity.client.post(
         "/api/v1/users",
         json={"name": "Technician", "email": "Tech+one@example.com"},
@@ -571,6 +640,12 @@ def test_user_management_secrets_revocation_and_last_admin(identity: Harness) ->
     technician_id = UUID(created.json()["data"]["id"])
     assert len(temporary) == 32 and created.headers["cache-control"] == "no-store"
     detail = identity.client.get(f"/api/v1/users/{technician_id}")
+    email_overpost = identity.client.patch(
+        f"/api/v1/users/{technician_id}",
+        json={"name": "Technician", "email": "changed@example.com"},
+        headers=identity.mutation_headers(detail.headers["etag"]),
+    )
+    assert email_overpost.status_code == 422
     disabled = identity.client.post(
         f"/api/v1/users/{technician_id}/disable",
         json={},
@@ -597,6 +672,12 @@ def test_user_management_secrets_revocation_and_last_admin(identity: Harness) ->
         headers=identity.mutation_headers(own.headers["etag"]),
     )
     assert self_disable.status_code == 409
+    self_reset = identity.client.post(
+        f"/api/v1/users/{admin.id}/reset-password",
+        json={},
+        headers=identity.mutation_headers(own.headers["etag"]),
+    )
+    assert self_reset.status_code == 409
     with identity.factory() as session:
         tech = session.get(User, technician_id)
         assert tech is not None and tech.status == "ACTIVE" and tech.must_change_password
@@ -652,6 +733,41 @@ def test_reset_revokes_sessions_and_does_not_enable_disabled_user(identity: Harn
         )
         assert stored_session is not None
         assert stored_session.revocation_reason == "PASSWORD_RESET"
+
+
+@pytest.mark.postgres
+def test_technician_is_denied_admin_resources_and_disabled_session(identity: Harness) -> None:
+    admin = identity.user(email="admin@example.com", password="Admin access password 2026")
+    technician = identity.user(
+        email="tech@example.com", password="Technician access password 2026", role="TECHNICIAN"
+    )
+    identity.login("tech@example.com", "Technician access password 2026")
+    technician_cookie = identity.client.cookies["clientops_session_dev"]
+    assert identity.client.get("/api/v1/users").status_code == 403
+    assert identity.client.get("/api/v1/business-profile").status_code == 403
+    identity.login("admin@example.com", "Admin access password 2026")
+    detail = identity.client.get(f"/api/v1/users/{technician.id}")
+    disabled = identity.client.post(
+        f"/api/v1/users/{technician.id}/disable",
+        json={},
+        headers=identity.mutation_headers(detail.headers["etag"]),
+    )
+    assert disabled.status_code == 200
+    identity.client.cookies.clear()
+    identity.client.cookies.set("clientops_session_dev", technician_cookie)
+    assert identity.client.get("/api/v1/auth/session").status_code == 401
+    assert identity.client.get("/api/v1/business-profile").status_code == 401
+    with identity.factory() as session:
+        saved = session.get(User, technician.id)
+        assert saved is not None and saved.status == "DISABLED"
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(SessionModel)
+                .where(SessionModel.user_id == admin.id, SessionModel.revoked_at.is_(None))
+            )
+            == 1
+        )
 
 
 @pytest.mark.postgres
