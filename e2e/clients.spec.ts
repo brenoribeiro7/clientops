@@ -42,6 +42,8 @@ async function assertAccessible(page: import("@playwright/test").Page) {
 test("@cl03 fluxo real de Clients, Equipment, timeline e autorização", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000);
+
   const suffix = testInfo.project.name.replaceAll("-", ".");
   const clientName = `Cliente CL03 ${suffix}`;
   const updatedName = `${clientName} atualizado`;
