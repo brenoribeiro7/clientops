@@ -15,8 +15,10 @@ class TimelineEvent(Base):
     __table_args__ = (
         CheckConstraint(
             "event_type IN ('user.created','user.disabled','user.enabled',"
-            "'user.password_reset','user.password_changed','business.updated')",
-            name="ck_timeline_events_type_cl02",
+            "'user.password_reset','user.password_changed','business.updated',"
+            "'client.created','client.updated','client.archived','client.restored',"
+            "'equipment.created','equipment.updated','equipment.archived','equipment.restored')",
+            name="ck_timeline_events_type_cl03",
         ),
         CheckConstraint(
             "actor_type IN ('USER','SYSTEM_AUTOMATION')", name="ck_timeline_events_actor_type"
@@ -27,7 +29,8 @@ class TimelineEvent(Base):
             name="ck_timeline_events_actor",
         ),
         CheckConstraint(
-            "subject_user_id IS NOT NULL OR business_profile_id IS NOT NULL",
+            "subject_user_id IS NOT NULL OR business_profile_id IS NOT NULL OR "
+            "client_id IS NOT NULL",
             name="ck_timeline_events_context",
         ),
         CheckConstraint(
@@ -50,6 +53,13 @@ class TimelineEvent(Base):
             "id",
             postgresql_where=text("business_profile_id IS NOT NULL"),
         ),
+        Index(
+            "ix_timeline_events_client",
+            "client_id",
+            "occurred_at",
+            "id",
+            postgresql_where=text("client_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, nullable=False)
@@ -63,6 +73,9 @@ class TimelineEvent(Base):
     )
     business_profile_id: Mapped[int | None] = mapped_column(
         SmallInteger, ForeignKey("business_profiles.id", ondelete="RESTRICT"), nullable=True
+    )
+    client_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("clients.id", ondelete="RESTRICT"), nullable=True
     )
     payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

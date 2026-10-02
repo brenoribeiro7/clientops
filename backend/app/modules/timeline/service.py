@@ -15,6 +15,14 @@ ALLOWED_PAYLOAD_KEYS: dict[str, set[str]] = {
     "user.password_reset": {"role", "status", "source"},
     "user.password_changed": {"role", "status", "source"},
     "business.updated": {"changed_fields"},
+    "client.created": set(),
+    "client.updated": {"changed_fields"},
+    "client.archived": set(),
+    "client.restored": set(),
+    "equipment.created": {"equipment_id"},
+    "equipment.updated": {"equipment_id", "changed_fields"},
+    "equipment.archived": {"equipment_id"},
+    "equipment.restored": {"equipment_id"},
 }
 
 
@@ -28,6 +36,7 @@ def append_event(
     actor_user_id: UUID | None = None,
     subject_user_id: UUID | None = None,
     business_profile_id: int | None = None,
+    client_id: UUID | None = None,
 ) -> TimelineEvent:
     allowed = ALLOWED_PAYLOAD_KEYS[event_type]
     if set(payload) - allowed or len(json.dumps(payload, separators=(",", ":")).encode()) > 4096:
@@ -39,6 +48,7 @@ def append_event(
         actor_user_id=actor_user_id,
         subject_user_id=subject_user_id,
         business_profile_id=business_profile_id,
+        client_id=client_id,
         payload=payload,
         occurred_at=occurred_at,
     )
