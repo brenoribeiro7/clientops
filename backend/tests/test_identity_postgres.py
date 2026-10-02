@@ -7,6 +7,7 @@ import subprocess
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from multiprocessing import get_context
 from threading import Barrier, Event
 from uuid import UUID, uuid4
 
@@ -138,6 +139,16 @@ def _tty_cli(module: str, arguments: list[str], password: str) -> tuple[int, byt
             process.wait(timeout=5)
     assert password.encode() not in output
     return status, bytes(output)
+
+
+def _rate_process(barrier: object) -> None:
+    engine = create_engine(os.environ["DATABASE_URL"])
+    try:
+        with Session(engine) as session:
+            barrier.wait(timeout=10)  # type: ignore[attr-defined]
+            consume(session, ApiSettings(), RateRule("multiprocess_test", 100, 60), "same", NOW)
+    finally:
+        engine.dispose()
 
 
 @pytest.fixture
@@ -773,6 +784,27 @@ def test_rate_limit_denial_counts_and_new_window_starts_clean(identity: Harness)
             session.scalars(text("SELECT count FROM rate_limit_buckets ORDER BY window_start"))
         )
     assert counts == [3, 1]
+
+
+@pytest.mark.postgres
+def test_rate_limit_bucket_is_atomic_across_processes(identity: Harness) -> None:
+    context = get_context("spawn")
+    workers = 4
+    barrier = context.Barrier(workers + 1)
+    processes = [context.Process(target=_rate_process, args=(barrier,)) for _ in range(workers)]
+    for process in processes:
+        process.start()
+    barrier.wait(timeout=10)
+    for process in processes:
+        process.join(timeout=15)
+        assert process.exitcode == 0
+    with identity.factory() as session:
+        assert (
+            session.scalar(
+                text("SELECT count FROM rate_limit_buckets WHERE rule='multiprocess_test'")
+            )
+            == workers
+        )
 
 
 @pytest.mark.postgres

@@ -15,6 +15,12 @@ REQUIRED_JOBS = {
     "compose-smoke",
     "security-foundation",
 }
+CL02_JOBS = REQUIRED_JOBS | {
+    "cl01-gate",
+    "identity-integration",
+    "identity-security",
+    "identity-e2e",
+}
 
 
 @pytest.mark.artifacts
@@ -38,6 +44,17 @@ def test_cl01_gate_inspects_every_required_result_and_rejects_non_success() -> N
     gate = content.split("  cl01-gate:\n", maxsplit=1)[1]
     assert "if: ${{ !cancelled() }}" in gate
     for job in REQUIRED_JOBS:
+        assert f"- {job}" in gate
+        assert f"${{{{ needs.{job}.result }}}}" in gate
+    assert 'test "$result" = success' in gate
+
+
+@pytest.mark.artifacts
+def test_cl02_gate_inspects_every_required_result_and_rejects_non_success() -> None:
+    content = WORKFLOW.read_text(encoding="utf-8")
+    gate = content.split("  cl02-gate:\n", maxsplit=1)[1]
+    assert "if: ${{ always() }}" in gate
+    for job in CL02_JOBS:
         assert f"- {job}" in gate
         assert f"${{{{ needs.{job}.result }}}}" in gate
     assert 'test "$result" = success' in gate
