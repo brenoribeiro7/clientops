@@ -110,6 +110,6 @@ def test_named_volumes_survive_container_recreation() -> None:
         mode = _compose("exec", "-T", "api", "stat", "-c", "%a", marker).stdout.strip()
         assert stored == "foundation-persistence"
         assert mode == "600"
-        assert _database_revision() == expected_revision == "0001_foundation"
+        assert _database_revision() == expected_revision == "0002_identity_sessions_security"
     finally:
         _compose("exec", "-T", "api", "rm", "-f", marker, check=False)

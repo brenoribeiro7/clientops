@@ -37,11 +37,11 @@ Documentação [SQLAlchemy version counter](https://docs.sqlalchemy.org/en/20/or
 - **Options considered:** Argon2id/bcrypt; sessão bearer opaca/JWT; CSRF origem apenas/token+origem.
 - **Chosen option:** Argon2id64MiB/t3/p4, salt16/hash32; senha15–128 chars/512bytes; session256bits SHA-256; idle30min/absolute12h/touch60s; rotação em login/troca, sem periódica; cookie __Host- HttpOnly/Secure/Lax; HMAC-CSRF + origem confiável.
 - **Rationale:** custo de hash explícito, revogação no banco e proteção contra CSRF com cookie; sem segredos persistidos no browser.
-- **Consequences:** reset/disable revogam todas; credencial temporária24h e sessão restrita; email ASCII/IDNA lowercase consistente e unique; custo Argon2 será medido CL-02.
+- **Consequences:** reset/disable revogam todas; credencial temporária24h e sessão restrita; email ASCII/IDNA lowercase consistente e unique; custo Argon2 medido na imagem API CL-02 sem alterar parâmetros.
 - **Rejected alternatives:** JWT/localStorage, e-mail password recovery v1, rotação a cada request e dependência de SameSite como única defesa.
 - **Revisit trigger:** medição no host exigir ajuste justificado de capacidade/parâmetros, incidente de sessão ou expansão de requisitos após v1.
 
-Parâmetros conferidos na [API argon2-cffi](https://argon2-cffi.readthedocs.io/en/25.1.0/api.html). O perfil escolhido existe; nenhuma latência local foi medida. [OWASP sessão](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) e [OWASP CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html) fundamentam defesa em camadas; os timeouts e HMAC deste contrato são escolhas locais.
+Parâmetros conferidos na [API argon2-cffi](https://argon2-cffi.readthedocs.io/en/25.1.0/api.html). A medição real de hash/verify e memória está em SECURITY; não é justificativa automática para reduzir parâmetros. [OWASP sessão](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) e [OWASP CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html) fundamentam defesa em camadas; os timeouts e HMAC deste contrato são escolhas locais.
 
 ## D04 — Link público e WhatsApp
 
@@ -246,3 +246,9 @@ O scheduler também foi adiado para CL-05 em vez de criar um processo inerte. CL
 O workflow foi criado com Actions por SHA, imagens por digest, locks congelados e gate agregado que examina todos os jobs. O repositório público `brenoribeiro7/clientops` usa `main` como branch padrão; `main` está em `84f7c4aa5af9dc292b109cf6602d3dd302ac870e` e a implementação permanece em `feat/cl-01-foundation`, sem merge.
 
 O SHA pré-correção documental `6776fa2464cb09d66b318d103e85e74ec48f094e` recebeu CI real no run histórico `36732984184`, conclusão `success`: `backend-quality`, `frontend-quality`, `database-migration`, `contract-drift`, `compose-smoke`, `security-foundation` e `cl01-gate` concluíram com `success`. Esse run prova aquele SHA, não o novo commit documental; a política exige novo run completo e verde no SHA final, cuja identificação exata pertence ao relatório externo desta correção para evitar loop de commits de evidência.
+
+## Registro de execução CL-02 — 01/10/2026
+
+Nenhuma decisão D01–D12 foi reaberta. A resolução determinística adicionou `argon2-cffi` 25.1.0, `email-validator` 2.3.0 e `@tanstack/react-query` 5.104.0 como dependências efetivamente consumidas. Sessões continuam opacas, coordenação continua no PostgreSQL e não entraram JWT, Redis, auth externo, scheduler, logo ou serviço pago.
+
+O ambiente de teste interno recebe origem explícita e cookie dev separado; production/demo permanecem presos a HTTPS e ao cookie `__Host-` Secure. A fixture destrutiva existe somente como CLI `APP_ENV=test` para gates descartáveis. Limpeza agendada de buckets não foi implementada nem alegada; continua na maintenance CL-05 conforme a decisão existente.

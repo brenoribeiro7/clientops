@@ -1,6 +1,9 @@
 services:
   api:
     environment:
+      APP_ENV: test
+      PUBLIC_BASE_URL: http://web:8080
+      TRUSTED_ORIGINS: http://web:8080
       TRUSTED_HOSTS: localhost,127.0.0.1,api,web
 
   test:

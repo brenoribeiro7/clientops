@@ -1,4 +1,4 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, UserRound } from "lucide-react";
 import { Outlet } from "react-router-dom";
 
 import { NavigationLink } from "../../components/shared/NavigationLink";
@@ -19,6 +19,10 @@ export function TechnicianLayout() {
         <NavigationLink to="/tech/today">
           <CalendarDays aria-hidden="true" size={20} />
           Hoje
+        </NavigationLink>
+        <NavigationLink to="/tech/account">
+          <UserRound aria-hidden="true" size={20} />
+          Conta
         </NavigationLink>
       </nav>
     </div>

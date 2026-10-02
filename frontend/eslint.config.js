@@ -27,7 +27,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/app/router.tsx"],
+    files: ["src/app/router.tsx", "src/app/auth/AuthProvider.tsx"],
     rules: {
       "react-refresh/only-export-components": "off",
     },

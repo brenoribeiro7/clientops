@@ -35,19 +35,30 @@ class TrustedProxyMiddleware:
         if scope["type"] == "http":
             client = scope.get("client")
             trusted = bool(client and self._trusted(client[0]))
+            state = scope.setdefault("state", {})
             if not trusted:
-                scope = dict(scope)
                 scope["headers"] = [
                     (name, value)
                     for name, value in scope.get("headers", [])
                     if name.lower() not in self.forwarded_headers
                 ]
+                try:
+                    state["client_ip"] = str(ipaddress.ip_address(client[0])) if client else None
+                except ValueError:
+                    state["client_ip"] = None
             else:
                 headers = Headers(scope=scope)
                 proto = headers.get("x-forwarded-proto")
                 if proto in {"http", "https"}:
-                    scope = dict(scope)
                     scope["scheme"] = proto
+                forwarded_for = headers.get("x-forwarded-for")
+                try:
+                    if forwarded_for is None or "," in forwarded_for:
+                        raise ValueError
+                    state["client_ip"] = str(ipaddress.ip_address(forwarded_for.strip()))
+                except ValueError:
+                    state["client_ip"] = None
+            state["trusted_proxy"] = trusted
         await self.app(scope, receive, send)
 
 
@@ -79,6 +90,7 @@ async def request_context_middleware(
             "route": template,
             "status": response.status_code,
             "duration_ms": round((time.perf_counter() - started) * 1000, 3),
+            "client_ip": getattr(request.state, "client_ip", None),
         },
     )
     return response

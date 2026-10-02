@@ -3,8 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 
 import { routes } from "../src/app/router";
+import { mockSession } from "./auth-fixture";
 
 it("oferece skip link e drawer operável por teclado", async () => {
+  vi.stubGlobal("fetch", mockSession("ADMIN"));
   const user = userEvent.setup();
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/admin"] })} />);
 
@@ -19,4 +21,5 @@ it("oferece skip link e drawer operável por teclado", async () => {
   await user.click(screen.getByRole("button", { name: "Fechar menu" }));
   expect(dialog).not.toHaveAttribute("open");
   expect(trigger).toHaveFocus();
+  vi.unstubAllGlobals();
 });

@@ -54,6 +54,9 @@ class ApiSettings(BaseSettings):
     TRUSTED_PROXY_CIDRS: str
     PRIVATE_STORAGE_ROOT: str
     LOG_LEVEL: str = "INFO"
+    SESSION_IDLE_SECONDS: int = 1800
+    SESSION_ABSOLUTE_SECONDS: int = 43200
+    SESSION_TOUCH_SECONDS: int = 60
 
     @field_validator("CSRF_HMAC_KEY", "RATE_LIMIT_HMAC_KEY")
     @classmethod
@@ -81,6 +84,13 @@ class ApiSettings(BaseSettings):
         if normalized not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
             raise ValueError("nível de log inválido")
         return normalized
+
+    @field_validator("SESSION_IDLE_SECONDS", "SESSION_ABSOLUTE_SECONDS", "SESSION_TOUCH_SECONDS")
+    @classmethod
+    def validate_positive_duration(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("deve ser positivo")
+        return value
 
     @property
     def trusted_origins(self) -> tuple[str, ...]:
@@ -124,6 +134,8 @@ class ApiSettings(BaseSettings):
             if "*" in host:
                 raise ValueError("hosts wildcard são proibidos")
         _ = self.trusted_proxy_networks
+        if self.SESSION_TOUCH_SECONDS > self.SESSION_IDLE_SECONDS:
+            raise ValueError("SESSION_TOUCH_SECONDS não pode exceder SESSION_IDLE_SECONDS")
         return self
 
 

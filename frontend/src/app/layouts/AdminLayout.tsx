@@ -10,6 +10,9 @@ function AdminNavigation() {
       <NavigationLink to="/admin" end>
         Início
       </NavigationLink>
+      <NavigationLink to="/admin/settings">Empresa</NavigationLink>
+      <NavigationLink to="/admin/settings/users">Usuários</NavigationLink>
+      <NavigationLink to="/admin/account">Minha conta</NavigationLink>
     </nav>
   );
 }

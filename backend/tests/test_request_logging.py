@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import Request
 from fastapi.testclient import TestClient
+from pytest import CaptureFixture
 
 from app.core.config import ApiSettings
 from app.main import create_app
@@ -41,3 +42,14 @@ def test_forwarded_proto_is_accepted_from_expected_proxy(settings: ApiSettings) 
     with TestClient(app, client=("172.28.0.2", 50000)) as proxy:
         response = proxy.get("/_test/scheme", headers={"X-Forwarded-Proto": "https"})
     assert response.json() == {"scheme": "https"}
+
+
+def test_logs_include_only_validated_normalized_client_ip(
+    settings: ApiSettings, capsys: CaptureFixture[str]
+) -> None:
+    raw_header = "2001:0db8:0000:0000:0000:0000:0000:0001"
+    with TestClient(create_app(settings), client=("172.28.0.2", 50000)) as proxy:
+        proxy.get("/api/v1/health/live", headers={"X-Forwarded-For": raw_header})
+    logs = capsys.readouterr().err
+    assert raw_header not in logs
+    assert '"client_ip":"2001:db8::1"' in logs

@@ -1,6 +1,6 @@
 # ClientOps
 
-Foundation CL-01 do ClientOps. Este repositório contém a API FastAPI, o shell React, PostgreSQL, migrations Alembic, o proxy Nginx, a composição Docker e os testes da fundação. Funcionalidades de identidade e negócio começam em CL-02 e não fazem parte desta entrega.
+ClientOps com a Foundation CL-01 e a implementação CL-02 de identidade, sessões, segurança e perfil da empresa. O repositório contém API FastAPI, aplicação React, PostgreSQL, migrations Alembic, proxy Nginx, composição Docker e testes locais/CI.
 
 ## Toolchain fixada
 
@@ -24,7 +24,19 @@ A aplicação fica em `http://127.0.0.1:8080`. O host publica somente o proxy; A
 
 - `GET /api/v1/health/live`: processo HTTP vivo, inclusive durante falha do banco;
 - `GET /api/v1/health/ready`: uso interno, verifica PostgreSQL, revisão Alembic exata e probe do volume privado;
-- `/admin`, `/tech/today`, `/q` e `/login`: shells estruturais sem autenticação ou dados comerciais simulados.
+- `/login` e `/change-password`: login e troca obrigatória de senha;
+- `/admin`, `/admin/account`, `/admin/settings` e `/admin/settings/users`: árvore privada do Admin;
+- `/tech/today` e `/tech/account`: árvore privada do Técnico;
+- `/q`: árvore pública isolada, ainda sem Quote até CL-04.
+
+Não existe conta padrão. Crie o primeiro Admin em um TTY, dentro do container da API:
+
+```bash
+docker compose --env-file infra/images.env --env-file .local/compose.env exec api \
+  python -m app.cli.create_admin --name "Admin" --email admin@example.com
+```
+
+Admins adicionais exigem `--additional`. O reset operacional usa `python -m app.cli.reset_password --email ...`; os dois comandos leem e confirmam a senha sem echo por TTY. `python -m app.cli.benchmark_argon2 --samples 3` mede hash, verify e memória observada sem alterar os parâmetros; a execução real está em [SECURITY](docs/SECURITY.md).
 
 Para a prova TLS local:
 
@@ -59,8 +71,8 @@ npm run test:unit
 npm run build
 ```
 
-Os testes PostgreSQL e Compose usam `.local/compose.env` e as imagens fixadas. O workflow `.github/workflows/ci.yml` separa qualidade backend/frontend, migration, drift de contrato, smoke Compose e segurança, com um gate agregado. A execução local valida o arquivo do workflow, mas somente um run do GitHub Actions no SHA publicado constitui evidência de CI real.
+Os testes PostgreSQL e Compose usam `.local/compose.env` e as imagens fixadas. O workflow `.github/workflows/ci.yml` preserva os jobs/gate CL-01 e acrescenta `identity-integration`, `identity-security`, `identity-e2e` e `cl02-gate`. A execução local valida o arquivo do workflow, mas somente um run do GitHub Actions no SHA publicado constitui evidência de CI real.
 
-## Limites da Foundation
+## Limites atuais
 
-CL-01 possui somente um probe técnico de escrita/leitura/remoção no volume privado. O FileStorage operacional, uploads, relatórios e scheduler entram em CL-05. Usuário, sessão, autenticação, CSRF funcional, BusinessProfile persistido e demais entidades comerciais também não existem nesta fase.
+CL-02 cria somente `business_profiles`, `users`, `sessions`, `rate_limit_buckets` e `timeline_events`. O FileStorage operacional, uploads, logo, relatórios e scheduler entram em CL-05; Client/Equipment começam em CL-03 e Quote em CL-04. Não há Redis, JWT, autenticação externa nem infraestrutura paga obrigatória.

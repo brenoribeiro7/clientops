@@ -1,6 +1,6 @@
 # ClientOps — contrato REST v1
 
-Especificação HTTP do produto. Prefixo **/api/v1**; exemplos omitem host. [DOMAIN](DOMAIN.md) fixa campos, tipos, limites e regras; [SECURITY](SECURITY.md) fixa credenciais. CL-01 implementa somente `/health/live` e `/health/ready`; os endpoints comerciais continuam reservados às fases posteriores.
+Especificação HTTP do produto. Prefixo **/api/v1**; exemplos omitem host. [DOMAIN](DOMAIN.md) fixa campos, tipos, limites e regras; [SECURITY](SECURITY.md) fixa credenciais. CL-02 implementa health, auth/session, gestão de User e BusinessProfile listados abaixo. Os demais endpoints permanecem contratos de fases posteriores.
 
 ## Convenções
 
@@ -82,9 +82,8 @@ Listagens retornam summaries sem imagens/snapshots/items extensos. Detail é end
 | POST /users/{id}/reset-password | A | {} | 200 User + temporary_password; If-Match; não self |
 | GET /business-profile | A | — | Profile/ETag, cinco campos nullable, is_complete e missing_fields derivados |
 | PATCH /business-profile | A | trade_name, phone, email, address, timezone, acknowledge_timezone_change | Profile; If-Match; onboarding parcial e timezone IANA explícita |
-| PUT /business-profile/logo | A | multipart file! | Profile e ETag; If-Match; pipeline logo |
-| GET /business-profile/logo | A | — | PNG privado ou 404 |
-| DELETE /business-profile/logo | A | — | 204; If-Match; preserva arquivos referenciados |
+
+As rotas de logo do contrato do produto continuam adiadas para CL-05 e não existem na OpenAPI CL-02. A OpenAPI gerada documenta cookie privado, headers CSRF e If-Match, ETag e Retry-After; `frontend/src/contracts/api.d.ts` é gerado diretamente desse artefato.
 
 Admin pode filtrar technicians ACTIVE via GET users, sem endpoint de lookup desprotegido. BusinessProfile initial GET retorna trade_name:null,phone:null,email:null,address:null,timezone:null,is_complete:false e missing_fields com os cinco nomes. PATCH parcial preserva campos omitidos e permite NULL nos ainda não configurados; empty/whitespace normaliza para NULL, nunca é persistido. Valor não nulo inválido, timezone não IANA, is_complete ou missing_fields enviados pelo cliente retornam 422. is_complete só é true quando trade_name, phone, email, address e timezone são todos válidos/não nulos; logo não participa.
 
