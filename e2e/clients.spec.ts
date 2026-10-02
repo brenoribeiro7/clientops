@@ -12,15 +12,15 @@ async function login(
   password: string,
 ) {
   await page.goto("/login");
-  await page.getByLabel("E-mail").fill(email);
-  await page.getByLabel("Senha", { exact: true }).fill(password);
-  const response = page.waitForResponse(
-    (candidate) =>
-      candidate.url().includes("/api/v1/auth/login") &&
-      candidate.request().method() === "POST",
-  );
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await response;
+  const response = await page.request.post("/api/v1/auth/login", {
+    data: { email, password },
+    headers: {
+      Origin: new URL(page.url()).origin,
+      "X-ClientOps-Request": "browser-v1",
+    },
+  });
+  expect(response.status()).toBe(200);
+  await page.goto("/login");
   await page.waitForURL(/\/(admin|tech\/today|change-password)$/);
 }
 
