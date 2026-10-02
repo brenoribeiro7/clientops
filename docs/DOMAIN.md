@@ -1,6 +1,6 @@
 # ClientOps — domínio e modelo lógico
 
-Fonte principal de verdade de regras v1.0. [API](API.md) define transporte; [SECURITY](SECURITY.md) define identidade/permissões. Tipos, tabelas e exemplos abaixo são especificações, não migrations ou models.
+Fonte principal de verdade de regras v1.0. [API](API.md) define transporte; [SECURITY](SECURITY.md) define identidade/permissões. A seção final identifica o subconjunto materializado pela migration CL-02; os demais tipos e exemplos continuam especificação de fases futuras.
 
 ## Convenções globais
 
@@ -265,3 +265,9 @@ USER aponta usuário real; CUSTOMER_QUOTE_LINK aponta registro de acesso, sem af
 | alert.activated/resolved | alvo; type e alert_id |
 
 Login/logout/falhas de autenticação ficam em log de segurança, sem timeline operacional. Não registrar view público: GET permanece sem mutação comercial nem falsa comprovação de leitura. Listagem técnica filtra contexto da própria OS E tipos permitidos de execução (service, checklist, evidence, completion); exclui quote/charge/usuários/profile/alert/report e payload de cliente interno. Admin vê timeline de contexto, não feed irrestrito exposto ao cliente.
+
+## Subconjunto persistido na CL-02
+
+O schema atual materializa somente BusinessProfile singleton, User, Session, RateLimitBucket e TimelineEvent nos contextos User/BusinessProfile. `is_complete`, `missing_fields`, `business_timezone` e `business_today` são derivados; timezone válida disponibiliza tempo civil mesmo com outro campo faltante. A timeline aceita apenas `user.created`, `user.disabled`, `user.enabled`, `user.password_reset`, `user.password_changed` e `business.updated`, com payload objeto de até 4 KiB e sem segredos.
+
+Client, Equipment, Quote, ServiceOrder, uploads, logo, Report, Charge, OperationalAlert e scheduler não foram antecipados.

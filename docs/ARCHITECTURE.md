@@ -1,6 +1,6 @@
 # ClientOps — arquitetura e operação
 
-Especificação CL-00 com reconciliação da Foundation CL-01 em 30/09/2026. [DOMAIN](DOMAIN.md) governa invariantes, [SECURITY](SECURITY.md) governa controles, [API](API.md) governa HTTP. As partes comerciais continuam contratos futuros; a infraestrutura CL-01 descrita como implementada abaixo existe no repositório.
+Especificação CL-00 com reconciliação das implementações CL-01 e CL-02 até 01/10/2026. [DOMAIN](DOMAIN.md) governa invariantes, [SECURITY](SECURITY.md) governa controles, [API](API.md) governa HTTP. Identidade, sessões, User e BusinessProfile já existem; os demais domínios comerciais continuam contratos futuros.
 
 Project/repository root oficial: **/home/breno/Projects/clientops**. /home/breno/Projects é somente o diretório pai. Todos os caminhos relativos deste documento partem do root oficial; os nove documentos ficam em /home/breno/Projects/clientops/docs. Git não é inicializado em CL-00-FIX. Quando autorizado em CL-01, git init só poderá ocorrer dentro de /home/breno/Projects/clientops; é proibido inicializar o repositório no diretório pai. CL-01 não poderá prosseguir se o root real não puder ser estabelecido ou se Git/toolchain continuarem indisponíveis; preflight e evidência em PHASES.
 
@@ -71,7 +71,7 @@ backend/
       timeline/        append de eventos + leitura filtrada
     storage/           contrato FileStorage + filesystem adapter
     jobs/              evaluate_automations, generate_reports, maintenance
-    cli/               create_admin, reset_password, seed_demo
+    cli/               create_admin, reset_password, benchmark_argon2, fixture test-only
   migrations/          Alembic; sem criação em CL-00
   tests/               unit, integration, api, security, migration
 frontend/
@@ -173,8 +173,14 @@ R=required; O=optional com default; S=secret; P=pública. Validação de config 
 
 Cookie e limites de upload/rate são constantes versionadas do contrato, não opções livres por usuário. Sessões opacas dispensam chave global de assinatura: hash SHA-256 no banco; CSRF_HMAC_KEY tem finalidade distinta. Timezone e dados da empresa ficam em BusinessProfile, não em env; comandos capturam sua versão ao gerar snapshots. O singleton inicial tem trade_name, phone, email, address e timezone em NULL. Em CL-02, Admin preenche onboarding e escolhe explicitamente timezone IANA, sem valor pré-selecionado ou fallback de produção. is_complete é calculado pelo domínio sobre exatamente esses cinco campos válidos; logo é opcional. Send de Quote e start de OS exigem is_complete=true, sob lock, ou retornam BUSINESS_PROFILE_INCOMPLETE. Após completar, não permitir limpar campos essenciais; timezone escolhida só muda para outra válida. America/Bahia fica exclusivamente no seed Climatech/fixtures específicas. Sem timezone, regras civis aguardam configuração conforme DOMAIN/API; health/login e onboarding continuam disponíveis.
 
-Schema inicial CL-01: metadados Alembic (`alembic_version`), revisão vazia `0001_foundation`, conexão e readiness; nenhuma tabela de domínio foi antecipada. `alembic check` não detectou drift. CL-02 acrescentará business_profiles, users, sessions, rate_limit_buckets e timeline_events; demais tabelas entram nas fases respectivas.
+Schema inicial CL-01: metadados Alembic (`alembic_version`), revisão vazia `0001_foundation`, conexão e readiness; nenhuma tabela de domínio foi antecipada. CL-02 acrescentou `business_profiles`, `users`, `sessions`, `rate_limit_buckets` e `timeline_events`; `alembic check` não detectou drift e as demais tabelas continuam nas fases respectivas.
 
 ### Operação de credenciais locais
 
 As senhas PostgreSQL do bootstrap são aplicadas apenas quando `pg_data` é inicializado. Regenerar `.local/compose.env` com `infra/dev-env.py --force` e manter um volume existente não altera as roles dentro do banco e causa incompatibilidade. Rotação futura deve atualizar banco e configuração de forma coordenada. Remover `pg_data` é aceitável somente em ambiente descartável sem dados relevantes; recriar containers com `docker compose down` preserva ambos os volumes.
+
+## Implementação CL-02
+
+A migration `0002_identity_sessions_security` cria exatamente `business_profiles`, `users`, `sessions`, `rate_limit_buckets` e `timeline_events`. A API usa uma `Session` SQLAlchemy por request/comando e transações técnicas independentes para rate limiting. O runtime recebe `SELECT,UPDATE` no singleton BusinessProfile, `SELECT,INSERT` na timeline append-only e não recebe DDL.
+
+O backend organiza identidade, perfil e timeline em módulos, mantém apenas SHA-256 do bearer e coordena cap de sessão, último Admin e buckets pelo PostgreSQL. Um advisory lock transacional serializa comandos privados nesta instalação pequena; a autorização é revalidada sob lock do User/Session e permanece na transação do comando. A árvore React pública `/q` monta `PublicLayout` sem `AuthInfrastructure` ou QueryClient privado; login, troca de senha e rotas privadas montam o provider e TanStack Query. O teste de isolamento observa zero requests para `/auth/session` ao abrir `/q`.

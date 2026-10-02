@@ -1,6 +1,6 @@
 # ClientOps — testes e CI
 
-Gates orientados a riscos: autorização, histórico, valores e transições corretas; porcentagem de coverage não substitui esses critérios. **Nenhum teste do produto foi executado em CL-00:** esse registro continua histórico. A seção “Evidência CL-01” registra a Foundation executada em 30/09/2026; testes comerciais continuam futuros.
+Gates orientados a riscos: autorização, histórico, valores e transições corretas; porcentagem de coverage não substitui esses critérios. **Nenhum teste do produto foi executado em CL-00:** esse registro continua histórico. As seções de evidência registram CL-01 e o subconjunto de identidade/configuração CL-02; os domínios comerciais posteriores continuam futuros.
 
 ## Camadas
 
@@ -220,5 +220,23 @@ A execução browser completa registrou 87 PASS e 3 skips. Os skips são o teste
 O workflow GitHub Actions está implementado e tem teste estático para SHAs, padrões proibidos e resultados do gate. O repositório público `brenoribeiro7/clientops`, com `main` padrão em `84f7c4aa5af9dc292b109cf6602d3dd302ac870e`, publicou `feat/cl-01-foundation`. O SHA pré-correção documental `6776fa2464cb09d66b318d103e85e74ec48f094e` recebeu o run real histórico `36732984184`, conclusão `success`; `backend-quality`, `frontend-quality`, `database-migration`, `contract-drift`, `compose-smoke`, `security-foundation` e `cl01-gate` foram todos `success`. O novo SHA documental exige outro run completo e verde; o ID exato fica no relatório externo desta correção para evitar loop de commits.
 
 O incidente local de `dev-env.py --force` confirmou que credenciais regeneradas não atualizam roles de um `pg_data` já inicializado. Rotação exige procedimento coordenado; apagar volume só é permitido em ambiente descartável.
+
+## Evidência local CL-02 — 01/10/2026
+
+Execuções locais após a continuação: 50 testes pytest sem PostgreSQL, 34 testes PostgreSQL reais, 8 testes Compose/artefatos e 9 testes Vitest passaram. A matriz HTTP Playwright executou 108 casos em Chromium 390/768/1024/1440, Firefox 1440 e WebKit 390: 100 pass e 8 skips deliberados (Drawer desktop e o caso de segurança compartilhado executado uma vez em Chromium 390). O fluxo HTTPS production-like adicionou 9 pass em Chromium 390, incluindo cookie `__Host-` Secure/HttpOnly/Lax. Os casos usam API, Nginx, PostgreSQL, cookie e CSRF reais, sem mock do fluxo E2E. GitHub Actions no SHA final ainda não foi executado neste checkpoint documental.
+
+| Família | Casos CL-02 | Resultado | Restante adiado |
+|---|---|---|---|
+| AUTH-01..08 | login uniforme, temporary/forced change, cap/boundaries/touch, revoke/reset/logout/cookie | PASS — CL-02 COMPLETE | — |
+| BP-01/BP-02 | singleton NULL, parcial/completo, timezone/today, acknowledge, não regressão | PASS — CL-02 COMPLETE | — |
+| BP-03 | auth/profile/conta sem completude e tempo civil sem fallback | PASS — CL-02 APPLICABLE SUBSET | send CL-04; start CL-05 |
+| AZ-01..06 | deny-by-default, papéis fixos, self/último Admin e User/Profile Admin-only | PASS — CL-02 APPLICABLE SUBSET | objetos Client/Quote CL-03/04; OS/arquivos CL-05; Charge CL-06 |
+| SEC-01 | Origin/Referer/login-CSRF/CSRF em mutations CL-02 | PASS — CL-02 APPLICABLE SUBSET | multipart CL-05; público CL-04 |
+| SEC-03 | bearer/senha/hash ausentes de respostas, timeline e logs CL-02 | PASS — CL-02 APPLICABLE SUBSET | canários de domínios futuros nas fases respectivas |
+| SEC-04 | login IP/e-mail/instalação, reset/Admin e private/User; HMAC/concorrência/Retry-After | PASS — CL-02 APPLICABLE SUBSET | bearer público CL-04; upload CL-05 |
+| SEC-05 | CSP/headers/deep links privados e `/q` isolado | PASS — CL-02 APPLICABLE SUBSET | integração pública Quote CL-04 |
+| CON-01/06/07 | profile PATCH, sixth login, last Admin, login×disable/reset, password-change×private command, touch×revoke, two reset/disable, buckets multi-processo | PASS — CL-02 APPLICABLE SUBSET | concorrências de Quote/OS/Charge nas CL-04..06 |
+
+O fixture browser é CLI e recusa qualquer `APP_ENV` diferente de `test`; `--reset` usa a role migrator apenas no banco descartável do gate. O workflow preserva os jobs CL-01 e define `identity-integration`, `identity-security`, `identity-e2e` e `cl02-gate`. Resultado GitHub real pertence ao SHA publicado e é registrado no relatório de execução, evitando inserir um SHA auto-referente no commit.
 
 [SQLAlchemy version counter](https://docs.sqlalchemy.org/en/20/orm/versioning.html) cobre o caminho de flush; bulk updates exigiriam proteção própria e são evitados. [Alembic autogenerate/check](https://alembic.sqlalchemy.org/en/latest/autogenerate.html) documenta limites de detecção; constraints críticas têm inspeção adicional. São evidências documentais, não execução nesta fase.

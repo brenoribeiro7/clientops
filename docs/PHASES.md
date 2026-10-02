@@ -206,3 +206,9 @@ Verificação final documental: PASS. Inventário exato de nove documentos no ro
 Nenhuma funcionalidade nova REQUIRED V1 foi introduzida no CL-00-FIX. Naquele checkpoint histórico, a prontidão abaixo era somente para reauditoria documental, não liberava CL-01 e nenhum teste de runtime, browser/iPhone, build, Docker ou CI havia sido executado. O preflight, a implementação e a CI CL-01 posteriores estão registrados na seção de execução acima.
 
 CL-00-FIX STATUS: READY FOR RE-AUDIT
+
+## Execução CL-02 — checkpoint local de 01/10/2026
+
+A feature `feat/cl-02-identity-sessions-security` implementa a migration `0002`, auth/session/cookie/CSRF/origin, rate limiting PostgreSQL, BusinessProfile/User/timeline, CLI segura, OpenAPI/TS, frontend privado e isolamento `/q`. O scope audit encontra somente as cinco tabelas autorizadas e nenhuma entidade CL-03+.
+
+Os gates locais de unidade, PostgreSQL, Compose, frontend, HTTP multi-browser e HTTPS identity/security passaram conforme TESTING: 50 pytest sem PostgreSQL, 34 PostgreSQL, 8 Compose/artefatos, 9 Vitest, 100 HTTP Playwright pass/8 skips esperados e 9 HTTPS pass. O benchmark Argon2 hash/verify real está em SECURITY. Os jobs GitHub CL-02 estão definidos com `cl02-gate` exigindo `success` de todos os resultados; a execução GitHub no SHA final ainda será registrada. A fase permanece aberta para Implementation Audit e não é declarada CLOSED neste documento.

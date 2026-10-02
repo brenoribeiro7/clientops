@@ -145,4 +145,12 @@ O Nginx serve todos os documentos com a política `default-src 'self'; script-sr
 
 A rede `edge` é `172.28.0.0/28`; somente o endereço fixo do Nginx `172.28.0.2/32` consta em `TRUSTED_PROXY_CIDRS`. O middleware remove `X-Forwarded-*` de origem não confiável. Testes cobrem request via proxy e request direto com headers forjados. A API e o proxy executam sem root, somente o web publica porta, o readiness não é exposto e segredos não aparecem no frontend, histórico de imagens ou logs examinados.
 
-O volume privado fica fora do web root, montado somente pela API e operado como UID 10001. CL-01 testa apenas confinamento/permissões e o probe efêmero do readiness; upload, FileStorage operacional e arquivos de domínio permanecem CL-05. Autenticação, sessão e CSRF funcional permanecem CL-02.
+O volume privado fica fora do web root, montado somente pela API e operado como UID 10001. CL-01 testa apenas confinamento/permissões e o probe efêmero do readiness; upload, FileStorage operacional e arquivos de domínio permanecem CL-05.
+
+## Controles implementados na CL-02
+
+CL-02 implementa Argon2id pelos parâmetros normativos, semaphore não bloqueante de duas operações, dummy PHC, blocklist local, normalização central de e-mail ASCII/IDNA e comandos TTY `create_admin`/`reset_password`. O benchmark real na imagem `clientops-api:latest` (Python 3.13.15, Linux x86_64, glibc 2.36) executou um warm-up e três amostras em 01/10/2026. Hash: mínimo 84,854 ms, mediana 85,331 ms, máximo 117,381 ms. Verify: mínimo 85,134 ms, mediana 85,349 ms, máximo 109,610 ms. `ru_maxrss` observado: 108644 KiB. Comando: `docker run --rm --network none --entrypoint python clientops-api:latest -m app.cli.benchmark_argon2 --samples 3`. Os parâmetros não foram alterados pela medição.
+
+Sessões usam bearer CSPRNG de 32 bytes, cookie HttpOnly/Lax e somente SHA-256 no banco; idle 1800 s, absolute 43200 s, touch 60 s e cap de cinco sob lock do User. Comandos privados mantêm autorização, revalidação do User/Session e operação na mesma transação, serializados por advisory lock para que troca de senha, reset e disable não deixem um comando antigo continuar. Produção/demo usam `__Host-clientops_session; Secure`; desenvolvimento HTTP aceita somente localhost; o ambiente de teste Compose possui origem interna explícita. Origin/Referer e CSRF HMAC protegem toda mutation por cookie. O proxy confiável aceita exatamente um IP validado/normalizado e peers não confiáveis perdem `X-Forwarded-*`; logs recebem apenas o IP validado.
+
+Os buckets fixed-window guardam HMAC das chaves e não possuem limpeza automática na CL-02. A manutenção de buckets expirados por mais de 24 h permanece CL-05; decisões da janela corrente ignoram buckets de outras janelas pela chave primária temporal.
