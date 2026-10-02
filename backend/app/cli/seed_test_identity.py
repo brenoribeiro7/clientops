@@ -34,7 +34,8 @@ def main() -> None:
             with migration_engine.begin() as connection:
                 connection.execute(
                     text(
-                        "TRUNCATE timeline_events, sessions, rate_limit_buckets, users "
+                        "TRUNCATE equipment, clients, timeline_events, sessions, "
+                        "rate_limit_buckets, users "
                         "RESTART IDENTITY CASCADE"
                     )
                 )
