@@ -9,6 +9,8 @@ from sqlalchemy import create_engine, text
 
 @pytest.mark.postgres
 def test_upgrade_from_cl02_preserves_timeline_and_accepts_cl03_events() -> None:
+    if os.environ.get("CL03_UPGRADE_TEST") != "1":
+        pytest.skip("run explicitly with CL03_UPGRADE_TEST=1 at the CL-02 revision")
     url = os.environ.get("MIGRATION_DATABASE_URL")
     if not url:
         pytest.skip("MIGRATION_DATABASE_URL is required")
@@ -18,8 +20,7 @@ def test_upgrade_from_cl02_preserves_timeline_and_accepts_cl03_events() -> None:
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            if revision != "0002_identity_sessions_security":
-                pytest.skip("this regression is run explicitly against the CL-02 revision")
+            assert revision == "0002_identity_sessions_security"
             connection.execute(
                 text(
                     "INSERT INTO users "

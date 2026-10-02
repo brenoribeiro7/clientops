@@ -76,7 +76,13 @@ def test_cl02_gate_inspects_every_required_result_and_rejects_non_success() -> N
 @pytest.mark.artifacts
 def test_cl03_jobs_preserve_browser_matrix_and_gate_every_prior_result() -> None:
     content = WORKFLOW.read_text(encoding="utf-8")
-    assert len(re.findall(r"^  [a-z0-9-]+:\n", content, re.MULTILINE)) == 14
+    jobs = content.split("jobs:\n", maxsplit=1)[1]
+    assert len(re.findall(r"^  [a-z0-9-]+:\n", jobs, re.MULTILINE)) == 14
+    migration = content.split("  database-migration:\n", maxsplit=1)[1].split(
+        "  contract-drift:\n", maxsplit=1
+    )[0]
+    assert "--no-deps" in migration
+    assert "CL03_UPGRADE_TEST=1" in migration
     security = content.split("  security-foundation:\n", maxsplit=1)[1].split(
         "  cl01-gate:\n", maxsplit=1
     )[0]

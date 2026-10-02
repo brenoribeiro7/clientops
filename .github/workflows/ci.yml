@@ -71,7 +71,11 @@ jobs:
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml build migrate test
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env up -d --wait --wait-timeout 180 db
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env run --rm migrate alembic upgrade 0002_identity_sessions_security
-      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm test pytest tests/test_cl03_migration_upgrade.py -m postgres
+      - run: >-
+          docker compose --env-file infra/images.env --env-file .local/compose.env
+          -f compose.yaml -f compose.test.yaml run --rm --no-deps
+          -e CL03_UPGRADE_TEST=1 test
+          pytest tests/test_cl03_migration_upgrade.py -m postgres
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env run --rm migrate
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env run --rm migrate alembic check
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm test pytest -m postgres

@@ -188,7 +188,9 @@ def test_client_crud_search_pagination_archive_restore_and_timeline(
     same_a, _ = clients_api.add_client("Same name")
     same_b, _ = clients_api.add_client("Same name")
     tied = clients_api.client.get("/api/v1/clients?q=Same%20name&sort=name&page_size=100")
-    assert [item["id"] for item in tied.json()["data"]] == sorted([same_a["id"], same_b["id"]])
+    assert [item["id"] for item in tied.json()["data"]] == sorted(
+        [str(same_a["id"]), str(same_b["id"])]
+    )
 
     no_op = clients_api.client.patch(
         f"/api/v1/clients/{client_id}",

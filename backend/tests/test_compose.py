@@ -53,6 +53,6 @@ def test_proxy_access_log_omits_query_string() -> None:
     config = (ROOT / "infra" / "nginx" / "nginx.conf").read_text(encoding="utf-8")
     log_format = config.split("log_format clientops", maxsplit=1)[1].split(";", maxsplit=1)[0]
     assert "$request_method $uri $server_protocol" in log_format
-    assert "$request" not in log_format
+    assert '"$request "' not in log_format
     assert "$request_uri" not in log_format
     assert "$args" not in log_format

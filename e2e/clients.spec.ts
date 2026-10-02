@@ -46,7 +46,7 @@ test("@cl03 fluxo real de Clients, Equipment, timeline e autorização", async (
   const clientName = `Cliente CL03 ${suffix}`;
   const updatedName = `${clientName} atualizado`;
   const equipmentName = `Equipamento ${suffix}`;
-  const technicianEmail = `client.tech.${suffix}@example.com`;
+  const technicianEmail = `cl03.worker.${suffix}@example.com`;
 
   await login(page, adminEmail, adminPassword);
   await page.goto(`/admin/clients?q=ZZ-${suffix}`);
