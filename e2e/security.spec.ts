@@ -66,3 +66,58 @@ test("readiness não é exposta pelo proxy", async ({ request }) => {
   expect(await response.text()).not.toContain("migration");
   expect(await response.text()).not.toContain("storage");
 });
+
+test("API real rejeita CSRF e origens inválidas", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium-390",
+    "Prova de segurança compartilhada pela stack",
+  );
+  await page.goto("/login");
+  const origin = new URL(page.url()).origin;
+  const loginPayload = {
+    email: "admin.e2e@example.com",
+    password: "ClientOps E2E admin password 2026!",
+  };
+  const loginHeaders = { "X-ClientOps-Request": "browser-v1" };
+  for (const badOrigin of [undefined, "null", "https://evil.example"]) {
+    const response = await page.request.post("/api/v1/auth/login", {
+      data: loginPayload,
+      headers: badOrigin
+        ? { ...loginHeaders, Origin: badOrigin }
+        : loginHeaders,
+    });
+    expect(response.status()).toBe(403);
+  }
+  const loggedIn = await page.request.post("/api/v1/auth/login", {
+    data: loginPayload,
+    headers: { ...loginHeaders, Origin: origin },
+  });
+  expect(loggedIn.status()).toBe(200);
+  const session = await page.request.get("/api/v1/auth/session");
+  expect(session.status()).toBe(200);
+  const csrf = (await session.json()).data.csrf_token as string;
+  const mutation = { data: { trade_name: "Rejected" } };
+  const missingCsrf = await page.request.patch("/api/v1/business-profile", {
+    ...mutation,
+    headers: { Origin: origin },
+  });
+  expect(missingCsrf.status()).toBe(403);
+  const badCsrf = await page.request.patch("/api/v1/business-profile", {
+    ...mutation,
+    headers: { Origin: origin, "X-CSRF-Token": "invalid" },
+  });
+  expect(badCsrf.status()).toBe(403);
+  for (const badOrigin of [undefined, "null", "https://evil.example"]) {
+    const response = await page.request.patch("/api/v1/business-profile", {
+      ...mutation,
+      headers: badOrigin
+        ? { Origin: badOrigin, "X-CSRF-Token": csrf }
+        : { "X-CSRF-Token": csrf },
+    });
+    expect(response.status()).toBe(403);
+  }
+  const validSession = await page.request.get("/api/v1/auth/session");
+  expect(validSession.status()).toBe(200);
+});

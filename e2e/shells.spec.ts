@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 const pages = [
-  ["/admin", "Fundação administrativa"],
-  ["/tech/today", "Fundação do trabalho técnico"],
+  ["/admin", "Entrar no ClientOps"],
+  ["/tech/today", "Entrar no ClientOps"],
   ["/q", "Fundação da experiência pública"],
-  ["/login", "Acesso ao ClientOps"],
+  ["/login", "Entrar no ClientOps"],
 ] as const;
 
 for (const [path, heading] of pages) {
@@ -26,7 +26,13 @@ test("Drawer administrativo restaura foco", async ({ page }, testInfo) => {
     (testInfo.project.use.viewport?.width ?? 0) >= 1024,
     "A navegação desktop substitui o Drawer.",
   );
-  await page.goto("/admin");
+  await page.goto("/login");
+  await page.getByLabel("E-mail").fill("admin.e2e@example.com");
+  await page.getByLabel("Senha").fill("ClientOps E2E admin password 2026!");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Visão administrativa" }),
+  ).toBeVisible();
   const trigger = page.getByRole("button", {
     name: "Abrir menu administrativo",
   });

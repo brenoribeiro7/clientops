@@ -2,8 +2,13 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
 
 import { FoundationPage } from "./pages/FoundationPage";
-import { LoginShell } from "./pages/LoginShell";
+import { AccountPage } from "./pages/AccountPage";
+import { BusinessSettingsPage } from "./pages/BusinessSettingsPage";
+import { ChangePasswordPage } from "./pages/ChangePasswordPage";
+import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { UsersPage } from "./pages/UsersPage";
+import { AuthInfrastructure, RequireAuth, RequireRole } from "./auth/AuthProvider";
 
 const AdminLayout = lazy(() =>
   import("./layouts/AdminLayout").then((module) => ({ default: module.AdminLayout })),
@@ -29,38 +34,70 @@ function lazyElement(element: React.ReactNode) {
 
 export const routes: RouteObject[] = [
   {
-    path: "/admin",
-    element: lazyElement(<AdminLayout />),
+    element: <AuthInfrastructure />,
     children: [
       {
-        index: true,
-        element: (
-          <FoundationPage
-            eyebrow="Área administrativa"
-            title="Fundação administrativa"
-            description="A estrutura de navegação está pronta para receber os módulos das próximas fases."
-          />
-        ),
+        path: "/login",
+        element: <LoginPage />,
       },
-      { path: "*", element: <NotFoundPage home="/admin" /> },
-    ],
-  },
-  {
-    path: "/tech",
-    element: lazyElement(<TechnicianLayout />),
-    children: [
-      { index: true, element: <Navigate to="today" replace /> },
       {
-        path: "today",
-        element: (
-          <FoundationPage
-            eyebrow="Área técnica"
-            title="Fundação do trabalho técnico"
-            description="A área está preparada para a jornada operacional das próximas fases."
-          />
-        ),
+        path: "/change-password",
+        element: <ChangePasswordPage />,
       },
-      { path: "*", element: <NotFoundPage home="/tech/today" /> },
+      {
+        element: <RequireAuth />,
+        children: [
+          {
+            element: <RequireRole requiredRole="ADMIN" />,
+            children: [
+              {
+                path: "/admin",
+                element: lazyElement(<AdminLayout />),
+                children: [
+                  {
+                    index: true,
+                    element: (
+                      <FoundationPage
+                        eyebrow="Área administrativa"
+                        title="Visão administrativa"
+                        description="Gerencie a empresa, os usuários e sua conta."
+                      />
+                    ),
+                  },
+                  { path: "account", element: <AccountPage /> },
+                  { path: "settings", element: <BusinessSettingsPage /> },
+                  { path: "settings/users", element: <UsersPage /> },
+                  { path: "*", element: <NotFoundPage home="/admin" /> },
+                ],
+              },
+            ],
+          },
+          {
+            element: <RequireRole requiredRole="TECHNICIAN" />,
+            children: [
+              {
+                path: "/tech",
+                element: lazyElement(<TechnicianLayout />),
+                children: [
+                  { index: true, element: <Navigate to="today" replace /> },
+                  {
+                    path: "today",
+                    element: (
+                      <FoundationPage
+                        eyebrow="Área técnica"
+                        title="Hoje"
+                        description="Sua agenda operacional será adicionada na CL-05."
+                      />
+                    ),
+                  },
+                  { path: "account", element: <AccountPage /> },
+                  { path: "*", element: <NotFoundPage home="/tech/today" /> },
+                ],
+              },
+            ],
+          },
+        ],
+      },
     ],
   },
   {
@@ -80,7 +117,6 @@ export const routes: RouteObject[] = [
       { path: "*", element: <NotFoundPage home="/q" /> },
     ],
   },
-  { path: "/login", element: <LoginShell /> },
   { path: "/", element: <Navigate to="/login" replace /> },
   { path: "*", element: <NotFoundPage home="/login" /> },
 ];
