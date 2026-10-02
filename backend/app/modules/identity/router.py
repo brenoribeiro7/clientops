@@ -362,8 +362,7 @@ def reset_user(
 ) -> UserSecretResponse:
     del payload
     _require_mutation_security(request, context, x_csrf_token)
-    with request.app.state.session_factory() as limiter:
-        consume(limiter, request.app.state.settings, RESET_ADMIN, str(context.user.id), context.now)
+    _consume(request, RESET_ADMIN, str(context.user.id), context.now)
     user, temporary = _user_action("reset", user_id, response, db, context, if_match)
     response.headers["Cache-Control"] = "no-store"
     if temporary is None:

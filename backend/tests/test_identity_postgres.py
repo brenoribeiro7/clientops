@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import os
+import pty
+import select as io_select
+import subprocess
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from threading import Barrier
+from threading import Barrier, Event
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, func, select, text, update
+from sqlalchemy import create_engine, event, func, select, text, update
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.clock import Clock
@@ -18,12 +23,13 @@ from app.core.db import create_session_factory
 from app.core.errors import FoundationError
 from app.core.rate_limits import LOGIN_IP, RateRule, consume
 from app.main import create_app
+from app.modules.business.models import BusinessProfile
 from app.modules.business.schemas import BusinessProfilePatch
 from app.modules.business.service import update_profile
 from app.modules.identity.models import Session as SessionModel
 from app.modules.identity.models import User
 from app.modules.identity.passwords import hash_password, verify_password
-from app.modules.identity.service import authenticate, is_active, mutate_user
+from app.modules.identity.service import authenticate, change_password, is_active, mutate_user
 from app.modules.timeline.models import TimelineEvent
 
 ORIGIN = "http://localhost:8080"
@@ -45,6 +51,7 @@ class Harness:
     factory: sessionmaker[Session]
     settings: ApiSettings
     clock: MutableClock
+    engine: Engine
     csrf: str | None = None
 
     def user(
@@ -104,6 +111,35 @@ def _required(name: str) -> str:
     return value
 
 
+def _tty_cli(module: str, arguments: list[str], password: str) -> tuple[int, bytes]:
+    master, slave = pty.openpty()
+    command = ["python", "-m", module, *arguments]
+    assert password not in " ".join(command)
+    process = subprocess.Popen(command, stdin=slave, stdout=slave, stderr=slave)
+    os.close(slave)
+    output = bytearray()
+    try:
+        for prompt in (b"Password:", b"Confirm password:"):
+            while prompt not in output:
+                ready, _, _ = io_select.select([master], [], [], 10)
+                assert ready, "CLI did not prompt on TTY"
+                output.extend(os.read(master, 4096))
+            os.write(master, password.encode() + b"\n")
+        status = process.wait(timeout=20)
+        while io_select.select([master], [], [], 0)[0]:
+            try:
+                output.extend(os.read(master, 4096))
+            except OSError:
+                break
+    finally:
+        os.close(master)
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+    assert password.encode() not in output
+    return status, bytes(output)
+
+
 @pytest.fixture
 def identity() -> Iterator[Harness]:
     migration = create_engine(_required("MIGRATION_DATABASE_URL"))
@@ -128,7 +164,7 @@ def identity() -> Iterator[Harness]:
     app.state.clock = clock
     factory = create_session_factory(app.state.engine)
     with TestClient(app, client=("198.51.100.10", 50000)) as client:
-        yield Harness(client, factory, settings, clock)
+        yield Harness(client, factory, settings, clock, app.state.engine)
     migration.dispose()
 
 
@@ -335,6 +371,25 @@ def test_session_boundaries_and_expired_sessions_do_not_consume_cap(identity: Ha
 
 
 @pytest.mark.postgres
+def test_session_read_does_not_touch_but_private_command_does(identity: Harness) -> None:
+    identity.user(email="touch@example.com", password="Session touch password 2026")
+    identity.login("touch@example.com", "Session touch password 2026")
+    with identity.factory() as session:
+        model = session.scalar(select(SessionModel))
+        assert model is not None
+        original = model.last_seen_at
+    identity.clock.current = NOW + timedelta(seconds=identity.settings.SESSION_TOUCH_SECONDS + 1)
+    assert identity.client.get("/api/v1/auth/session").status_code == 200
+    with identity.factory() as session:
+        model = session.scalar(select(SessionModel))
+        assert model is not None and model.last_seen_at == original
+    assert identity.client.get("/api/v1/business-profile").status_code == 200
+    with identity.factory() as session:
+        model = session.scalar(select(SessionModel))
+        assert model is not None and model.last_seen_at == identity.clock.current
+
+
+@pytest.mark.postgres
 def test_legacy_session_overflow_revokes_all_but_four_before_login(identity: Harness) -> None:
     user = identity.user(email="legacy@example.com", password="Legacy sessions password")
     with identity.factory() as session:
@@ -368,6 +423,57 @@ def test_legacy_session_overflow_revokes_all_but_four_before_login(identity: Har
 
 
 @pytest.mark.postgres
+def test_five_active_plus_expired_revokes_oldest_active_only(identity: Harness) -> None:
+    user = identity.user(email="five@example.com", password="Five sessions password 2026")
+    active_ids: list[UUID] = []
+    expired_id = uuid4()
+    with identity.factory() as session:
+        for index in range(5):
+            session_id = uuid4()
+            active_ids.append(session_id)
+            session.add(
+                SessionModel(
+                    id=session_id,
+                    user_id=user.id,
+                    bearer_hash=index.to_bytes(32),
+                    created_at=NOW - timedelta(minutes=5 - index),
+                    last_seen_at=NOW,
+                    absolute_expires_at=NOW + timedelta(hours=12),
+                    revoked_at=None,
+                    revocation_reason=None,
+                )
+            )
+        session.add(
+            SessionModel(
+                id=expired_id,
+                user_id=user.id,
+                bearer_hash=b"e" * 32,
+                created_at=NOW - timedelta(hours=13),
+                last_seen_at=NOW - timedelta(hours=13),
+                absolute_expires_at=NOW,
+                revoked_at=None,
+                revocation_reason=None,
+            )
+        )
+        session.commit()
+    with identity.factory() as session:
+        authenticate(
+            session,
+            email=user.email_normalized,
+            password="Five sessions password 2026",
+            now=NOW,
+            settings=identity.settings,
+        )
+    with identity.factory() as session:
+        oldest = session.get(SessionModel, active_ids[0])
+        expired = session.get(SessionModel, expired_id)
+        models = list(session.scalars(select(SessionModel).where(SessionModel.user_id == user.id)))
+        assert oldest is not None and oldest.revocation_reason == "SESSION_LIMIT"
+        assert expired is not None and expired.revoked_at is None
+        assert sum(is_active(item, NOW, 1800) for item in models) == 5
+
+
+@pytest.mark.postgres
 def test_business_profile_partial_complete_and_timezone_contract(identity: Harness) -> None:
     identity.user(email="admin@example.com", password="Business profile password")
     identity.login("admin@example.com", "Business profile password")
@@ -381,6 +487,18 @@ def test_business_profile_partial_complete_and_timezone_contract(identity: Harne
         "timezone",
     ]
     assert initial.json()["data"]["business_today"] is None
+    missing_version = identity.client.patch(
+        "/api/v1/business-profile",
+        json={"trade_name": "No version"},
+        headers=identity.mutation_headers(),
+    )
+    assert missing_version.status_code == 428
+    stale_version = identity.client.patch(
+        "/api/v1/business-profile",
+        json={"trade_name": "Stale version"},
+        headers=identity.mutation_headers('"v999"'),
+    )
+    assert stale_version.status_code == 412
     partial = identity.client.patch(
         "/api/v1/business-profile",
         json={"timezone": "America/Bahia"},
@@ -391,6 +509,12 @@ def test_business_profile_partial_complete_and_timezone_contract(identity: Harne
     assert not body["is_complete"]
     assert body["business_timezone"] == "America/Bahia"
     assert body["business_today"] == "2026-06-01"
+    remove_timezone = identity.client.patch(
+        "/api/v1/business-profile",
+        json={"timezone": None},
+        headers=identity.mutation_headers(partial.headers["etag"]),
+    )
+    assert remove_timezone.status_code == 422
     complete = identity.client.patch(
         "/api/v1/business-profile",
         json={
@@ -565,11 +689,14 @@ def test_two_admin_disables_preserve_one_active_admin(identity: Harness) -> None
 @pytest.mark.postgres
 def test_rate_limit_uses_independent_hmac_buckets_per_ip(identity: Harness) -> None:
     identity.user(email="wrong@example.com", password="Rate limit password")
-    for _ in range(10):
+    for index in range(10):
         response = identity.client.post(
             "/api/v1/auth/login",
             json={"email": "missing@example.com", "password": "incorrect password"},
-            headers=LOGIN_HEADERS,
+            headers={
+                **LOGIN_HEADERS,
+                "X-Forwarded-For": "203.0.113.77" if index % 2 else "2001:db8::77",
+            },
         )
         assert response.status_code == 401
     limited = identity.client.post(
@@ -587,12 +714,112 @@ def test_rate_limit_uses_independent_hmac_buckets_per_ip(identity: Harness) -> N
         assert all(len(row.key_hash) == 32 for row in buckets)
         assert all(b"missing@example.com" not in row.key_hash for row in buckets)
         assert (
+            session.scalar(text("SELECT count FROM rate_limit_buckets WHERE rule='login_email'"))
+            == 11
+        )
+        assert (
+            session.scalar(
+                text("SELECT count FROM rate_limit_buckets WHERE rule='login_installation'")
+            )
+            == 11
+        )
+        assert (
             session.scalar(
                 text(
                     "SELECT count(DISTINCT key_hash) FROM rate_limit_buckets WHERE rule='login_ip'"
                 )
             )
             == 2
+        )
+        assert sorted(
+            session.scalars(text("SELECT count FROM rate_limit_buckets WHERE rule='login_ip'"))
+        ) == [1, 11]
+
+
+@pytest.mark.postgres
+def test_private_rate_limiter_database_failure_returns_503(
+    identity: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity.user(email="admin@example.com", password="Rate failure password 2026")
+    identity.login("admin@example.com", "Rate failure password 2026")
+
+    def fail_consume(*_args: object, **_kwargs: object) -> None:
+        raise SQLAlchemyError("simulated limiter failure")
+
+    monkeypatch.setattr("app.modules.identity.dependencies.consume", fail_consume)
+    response = identity.client.get("/api/v1/business-profile")
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "TEMPORARILY_UNAVAILABLE"
+
+
+@pytest.mark.postgres
+def test_rate_limit_denial_counts_and_new_window_starts_clean(identity: Harness) -> None:
+    rule = RateRule("boundary_test", 2, 60)
+    for _ in range(2):
+        with identity.factory() as session:
+            consume(session, identity.settings, rule, "same-client", NOW)
+    with identity.factory() as session, pytest.raises(FoundationError) as captured:
+        consume(session, identity.settings, rule, "same-client", NOW)
+    assert captured.value.status_code == 429
+    assert captured.value.headers is not None
+    assert int(captured.value.headers["Retry-After"]) > 0
+    with identity.factory() as session:
+        assert session.scalar(text("SELECT count FROM rate_limit_buckets")) == 3
+    next_window = NOW + timedelta(seconds=60)
+    with identity.factory() as session:
+        consume(session, identity.settings, rule, "same-client", next_window)
+    with identity.factory() as session:
+        counts = list(
+            session.scalars(text("SELECT count FROM rate_limit_buckets ORDER BY window_start"))
+        )
+    assert counts == [3, 1]
+
+
+@pytest.mark.postgres
+def test_reset_admin_bucket_counts_denied_requests(identity: Harness) -> None:
+    identity.user(email="admin@example.com", password="Admin limiter password 2026")
+    technician = identity.user(
+        email="tech@example.com",
+        password="Technician limiter password 2026",
+        role="TECHNICIAN",
+    )
+    identity.login("admin@example.com", "Admin limiter password 2026")
+    detail = identity.client.get(f"/api/v1/users/{technician.id}")
+    assert detail.status_code == 200
+    headers = identity.mutation_headers(detail.headers["etag"])
+    for index in range(10):
+        response = identity.client.post(
+            f"/api/v1/users/{technician.id}/reset-password", json={}, headers=headers
+        )
+        assert response.status_code == (200 if index == 0 else 412)
+    limited = identity.client.post(
+        f"/api/v1/users/{technician.id}/reset-password", json={}, headers=headers
+    )
+    assert limited.status_code == 429 and int(limited.headers["retry-after"]) > 0
+    with identity.factory() as session:
+        assert (
+            session.scalar(text("SELECT count FROM rate_limit_buckets WHERE rule='reset_admin'"))
+            == 11
+        )
+
+
+@pytest.mark.postgres
+def test_private_user_bucket_counts_denied_requests(
+    identity: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity.user(email="admin@example.com", password="Private limiter password 2026")
+    identity.login("admin@example.com", "Private limiter password 2026")
+    monkeypatch.setattr(
+        "app.modules.identity.dependencies.PRIVATE_USER", RateRule("private_user", 2, 300)
+    )
+    for _ in range(2):
+        assert identity.client.get("/api/v1/business-profile").status_code == 200
+    private_limited = identity.client.get("/api/v1/business-profile")
+    assert private_limited.status_code == 429
+    with identity.factory() as session:
+        assert (
+            session.scalar(text("SELECT count FROM rate_limit_buckets WHERE rule='private_user'"))
+            == 3
         )
 
 
@@ -876,3 +1103,136 @@ def test_login_racing_reset_leaves_old_password_and_session_invalid(identity: Ha
         assert saved is not None
         assert not verify_password(saved.password_hash, "Old login reset password")
         assert not any(is_active(model, NOW, 1800) for model in models)
+
+
+@pytest.mark.postgres
+def test_password_change_serializes_with_private_profile_command(identity: Harness) -> None:
+    user = identity.user(email="admin@example.com", password="Old private command password")
+    identity.login("admin@example.com", "Old private command password")
+    profile = identity.client.get("/api/v1/business-profile")
+    assert profile.status_code == 200
+    private_started = Event()
+    engine = identity.engine
+
+    def before_execute(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        if "FOR UPDATE" in statement and "FROM users" in statement:
+            private_started.set()
+
+    def private_patch() -> int:
+        response = identity.client.patch(
+            "/api/v1/business-profile",
+            json={"trade_name": "Must not commit"},
+            headers=identity.mutation_headers(profile.headers["etag"]),
+        )
+        return int(response.status_code)
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    with (
+        identity.factory() as locked,
+        ThreadPoolExecutor(max_workers=1, thread_name_prefix="private-command") as pool,
+    ):
+        locked.execute(select(User).where(User.id == user.id).with_for_update())
+        event.listen(engine, "before_cursor_execute", before_execute)
+        try:
+            future = pool.submit(private_patch)
+            assert private_started.wait(timeout=10)
+        finally:
+            event.remove(engine, "before_cursor_execute", before_execute)
+        try:
+            changed, _issued = change_password(
+                locked,
+                user_id=user.id,
+                current_password="Old private command password",
+                new_password="A new private command password 2026!",
+                now=NOW,
+                settings=identity.settings,
+            )
+            assert changed.version == 2
+            assert future.result(timeout=10) == 401
+        finally:
+            if not future.done():
+                future.cancel()
+    with identity.factory() as session:
+        saved = session.get(BusinessProfile, 1)
+        assert saved is not None and saved.trade_name is None
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(SessionModel)
+                .where(SessionModel.user_id == user.id, SessionModel.revoked_at.is_(None))
+            )
+            == 1
+        )
+
+
+@pytest.mark.postgres
+def test_admin_cli_tty_bootstrap_additional_and_reset(identity: Harness) -> None:
+    first_password = "First operator password 2026!"
+    first_args = ["--name", "First Admin", "--email", "first.admin@example.com"]
+    non_tty = subprocess.run(
+        ["python", "-m", "app.cli.create_admin", *first_args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert non_tty.returncode != 0 and "interactive TTY" in non_tty.stderr
+    status, output = _tty_cli("app.cli.create_admin", first_args, first_password)
+    assert status == 0 and b"Admin created" in output
+    second_args = ["--name", "Second Admin", "--email", "second.admin@example.com"]
+    status, output = _tty_cli("app.cli.create_admin", second_args, "Second operator password 2026!")
+    assert status != 0 and b"--additional" in output
+    status, output = _tty_cli(
+        "app.cli.create_admin",
+        [*second_args, "--additional"],
+        "Second operator password 2026!",
+    )
+    assert status == 0 and b"Admin created" in output
+    with identity.factory() as session:
+        first = session.scalar(
+            select(User).where(User.email_normalized == "first.admin@example.com")
+        )
+        second = session.scalar(
+            select(User).where(User.email_normalized == "second.admin@example.com")
+        )
+        assert first is not None and second is not None
+        assert verify_password(first.password_hash, first_password)
+        first_id, second_id = first.id, second.id
+    identity.login("first.admin@example.com", first_password)
+    reset_password = "Reset operator password 2026!"
+    status, output = _tty_cli(
+        "app.cli.reset_password", ["--email", "first.admin@example.com"], reset_password
+    )
+    assert status == 0 and b"sessions revoked" in output
+    with identity.factory() as session:
+        first = session.get(User, first_id)
+        issued = session.scalar(select(SessionModel).where(SessionModel.user_id == first_id))
+        second = session.get(User, second_id)
+        assert first is not None and second is not None and issued is not None
+        assert verify_password(first.password_hash, reset_password)
+        assert issued.revocation_reason == "OPERATOR_PASSWORD_RESET"
+        mutate_user(
+            session,
+            target_id=first_id,
+            actor=second,
+            now=NOW,
+            if_match=f'"v{first.version}"',
+            action="disable",
+        )
+    status, _output = _tty_cli(
+        "app.cli.reset_password",
+        ["--email", "first.admin@example.com"],
+        "Disabled account reset password 2026!",
+    )
+    assert status == 0
+    with identity.factory() as session:
+        first = session.get(User, first_id)
+        assert first is not None and first.status == "DISABLED"
+        assert verify_password(first.password_hash, "Disabled account reset password 2026!")

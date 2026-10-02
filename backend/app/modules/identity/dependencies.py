@@ -6,7 +6,8 @@ from typing import Annotated
 
 from fastapi import Depends, Request, Security
 from fastapi.security import APIKeyCookie
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
@@ -20,6 +21,7 @@ from app.modules.identity.service import bearer_hash, is_active
 documented_session_cookie = APIKeyCookie(
     name="__Host-clientops_session", scheme_name="cookieAuth", auto_error=False
 )
+PRIVATE_COMMAND_LOCK = 1431197004
 
 
 @dataclass(frozen=True)
@@ -83,22 +85,48 @@ def require_unrestricted(
     db: Annotated[Session, Depends(get_db)],
     context: Annotated[AuthContext, Depends(require_restricted)],
 ) -> AuthContext:
-    if context.user.must_change_password:
+    # Keep authorization and the command in one transaction. Password changes,
+    # resets, and disables lock the user row before revoking its sessions.
+    db.execute(select(func.pg_advisory_xact_lock(PRIVATE_COMMAND_LOCK)))
+    user = db.get(User, context.user.id, with_for_update=True, populate_existing=True)
+    model = db.get(SessionModel, context.session.id, with_for_update=True, populate_existing=True)
+    settings = request.app.state.settings
+    if (
+        user is None
+        or model is None
+        or user.status != "ACTIVE"
+        or model.user_id != user.id
+        or not is_active(model, context.now, settings.SESSION_IDLE_SECONDS)
+    ):
+        raise FoundationError(
+            status_code=401,
+            code="AUTHENTICATION_REQUIRED",
+            message="Autenticação necessária.",
+        )
+    if user.must_change_password:
         raise FoundationError(
             status_code=403,
             code="PASSWORD_CHANGE_REQUIRED",
             message="Troque a senha temporária antes de continuar.",
         )
     factory = request.app.state.session_factory
-    with factory() as limiter:
-        consume(
-            limiter,
-            request.app.state.settings,
-            PRIVATE_USER,
-            str(context.user.id),
-            context.now,
-        )
-    settings = request.app.state.settings
+    try:
+        with factory() as limiter:
+            consume(
+                limiter,
+                request.app.state.settings,
+                PRIVATE_USER,
+                str(user.id),
+                context.now,
+            )
+    except FoundationError:
+        raise
+    except SQLAlchemyError as error:
+        raise FoundationError(
+            status_code=503,
+            code="TEMPORARILY_UNAVAILABLE",
+            message="Serviço temporariamente indisponível.",
+        ) from error
     threshold = context.now - timedelta(seconds=settings.SESSION_TOUCH_SECONDS)
     db.execute(
         update(SessionModel)
@@ -112,8 +140,7 @@ def require_unrestricted(
         )
         .values(last_seen_at=context.now)
     )
-    db.commit()
-    return context
+    return AuthContext(model, user, context.raw_bearer, context.now)
 
 
 def require_admin(
