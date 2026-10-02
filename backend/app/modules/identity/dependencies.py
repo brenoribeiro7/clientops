@@ -32,6 +32,26 @@ class AuthContext:
     now: datetime
 
 
+def consume_private_user_rate(request: Request, context: AuthContext) -> None:
+    try:
+        with request.app.state.session_factory() as limiter:
+            consume(
+                limiter,
+                request.app.state.settings,
+                PRIVATE_USER,
+                str(context.user.id),
+                context.now,
+            )
+    except FoundationError:
+        raise
+    except SQLAlchemyError as error:
+        raise FoundationError(
+            status_code=503,
+            code="TEMPORARILY_UNAVAILABLE",
+            message="Serviço temporariamente indisponível.",
+        ) from error
+
+
 def optional_context(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
@@ -109,24 +129,7 @@ def require_unrestricted(
             code="PASSWORD_CHANGE_REQUIRED",
             message="Troque a senha temporária antes de continuar.",
         )
-    factory = request.app.state.session_factory
-    try:
-        with factory() as limiter:
-            consume(
-                limiter,
-                request.app.state.settings,
-                PRIVATE_USER,
-                str(user.id),
-                context.now,
-            )
-    except FoundationError:
-        raise
-    except SQLAlchemyError as error:
-        raise FoundationError(
-            status_code=503,
-            code="TEMPORARILY_UNAVAILABLE",
-            message="Serviço temporariamente indisponível.",
-        ) from error
+    consume_private_user_rate(request, AuthContext(model, user, context.raw_bearer, context.now))
     threshold = context.now - timedelta(seconds=settings.SESSION_TOUCH_SECONDS)
     db.execute(
         update(SessionModel)

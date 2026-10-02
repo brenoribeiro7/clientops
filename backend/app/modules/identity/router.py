@@ -22,6 +22,7 @@ from app.core.security import (
 )
 from app.modules.identity.dependencies import (
     AuthContext,
+    consume_private_user_rate,
     optional_context,
     require_admin,
     require_restricted,
@@ -138,6 +139,7 @@ def login(payload: LoginInput, request: Request, response: Response, db: Db) -> 
 
 @router.get("/auth/session", response_model=SessionResponse)
 def current_session(request: Request, response: Response, context: Restricted) -> SessionResponse:
+    consume_private_user_rate(request, context)
     response.headers["Cache-Control"] = "no-store"
     token = csrf_token(request.app.state.settings, context.raw_bearer)
     return SessionResponse(
@@ -158,6 +160,7 @@ def password_change(
 ) -> SessionResponse:
     require_trusted_origin(request)
     validate_csrf(request.app.state.settings, context.raw_bearer, x_csrf_token)
+    consume_private_user_rate(request, context)
     user, issued = change_password(
         db,
         user_id=context.user.id,
@@ -187,6 +190,7 @@ def logout(
     require_trusted_origin(request)
     if context is not None:
         validate_csrf(request.app.state.settings, context.raw_bearer, x_csrf_token)
+        consume_private_user_rate(request, context)
         model = db.get(SessionModel, context.session.id, with_for_update=True)
         if model and model.revoked_at is None:
             model.revoked_at = context.now

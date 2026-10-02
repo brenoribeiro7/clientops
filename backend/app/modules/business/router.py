@@ -29,14 +29,13 @@ IfMatchHeader = Annotated[str | None, Header(alias="If-Match")]
 
 @router.get("", response_model=BusinessProfileResponse, responses=RESOURCE_RESPONSE)
 def read_profile(
-    request: Request,
     response: Response,
     db: Db,
-    _: Admin,
+    context: Admin,
 ) -> BusinessProfileResponse:
     profile = get_profile(db)
     set_resource_headers(response, profile.version)
-    return BusinessProfileResponse(data=serialize(profile, request.app.state.clock.now_utc()))
+    return BusinessProfileResponse(data=serialize(profile, context.now))
 
 
 @router.patch("", response_model=BusinessProfileResponse, responses=RESOURCE_RESPONSE)

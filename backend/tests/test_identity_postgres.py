@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from argon2 import PasswordHasher
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, func, select, text, update
 from sqlalchemy.engine import Engine
@@ -48,12 +49,25 @@ class MutableClock(Clock):
 
 
 @dataclass
+class OneReadClock(Clock):
+    current: datetime
+    reads: int = 0
+
+    def now_utc(self) -> datetime:
+        self.reads += 1
+        if self.reads > 1:
+            raise AssertionError("request read Clock more than once")
+        return self.current
+
+
+@dataclass
 class Harness:
     client: TestClient
     factory: sessionmaker[Session]
     settings: ApiSettings
     clock: MutableClock
     engine: Engine
+    app: FastAPI
     csrf: str | None = None
 
     def user(
@@ -176,7 +190,7 @@ def identity() -> Iterator[Harness]:
     app.state.clock = clock
     factory = create_session_factory(app.state.engine)
     with TestClient(app, client=("198.51.100.10", 50000)) as client:
-        yield Harness(client, factory, settings, clock, app.state.engine)
+        yield Harness(client, factory, settings, clock, app.state.engine, app)
     migration.dispose()
 
 
@@ -251,7 +265,9 @@ def test_disabled_unknown_and_expired_temporary_logins_are_uniform(identity: Har
 
 
 @pytest.mark.postgres
-def test_forced_password_change_rotates_session(identity: Harness) -> None:
+def test_forced_password_change_rotates_session(
+    identity: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
     user = identity.user(
         email="tech@example.com",
         password="Temporary password 2026",
@@ -259,6 +275,8 @@ def test_forced_password_change_rotates_session(identity: Harness) -> None:
         temporary=True,
     )
     data = identity.login("tech@example.com", "Temporary password 2026")
+    rule = RateRule("private_change_success_test", 2, 300)
+    monkeypatch.setattr("app.modules.identity.dependencies.PRIVATE_USER", rule)
     old_raw = identity.client.cookies["clientops_session_dev"]
     assert identity.client.get("/api/v1/business-profile").json()["error"]["code"] == (
         "PASSWORD_CHANGE_REQUIRED"
@@ -282,6 +300,14 @@ def test_forced_password_change_rotates_session(identity: Harness) -> None:
         )
         assert len(sessions) == 2
         assert sum(item.revoked_at is None for item in sessions) == 1
+        assert (
+            session.scalar(
+                text(
+                    "SELECT count FROM rate_limit_buckets WHERE rule='private_change_success_test'"
+                )
+            )
+            == 1
+        )
     forbidden = identity.client.get("/api/v1/business-profile")
     assert forbidden.status_code == 403
     assert forbidden.json()["error"]["code"] == "FORBIDDEN"
@@ -621,6 +647,23 @@ def test_business_profile_partial_complete_and_timezone_contract(identity: Harne
 
 
 @pytest.mark.postgres
+def test_business_profile_get_uses_auth_context_clock_once(identity: Harness) -> None:
+    identity.user(email="clock@example.com", password="Single clock password 2026")
+    identity.login("clock@example.com", "Single clock password 2026")
+    with identity.factory() as session:
+        profile = session.get(BusinessProfile, 1)
+        assert profile is not None
+        profile.timezone = "America/Bahia"
+        session.commit()
+    request_clock = OneReadClock(datetime(2026, 6, 1, 12, 1, tzinfo=UTC))
+    identity.app.state.clock = request_clock
+    response = identity.client.get("/api/v1/business-profile")
+    assert response.status_code == 200
+    assert response.json()["data"]["business_today"] == "2026-06-01"
+    assert request_clock.reads == 1
+
+
+@pytest.mark.postgres
 def test_user_management_secrets_revocation_and_last_admin(identity: Harness) -> None:
     admin = identity.user(email="admin@example.com", password="User management password")
     session_data = identity.login("admin@example.com", "User management password")
@@ -877,6 +920,153 @@ def test_private_rate_limiter_database_failure_returns_503(
     response = identity.client.get("/api/v1/business-profile")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "TEMPORARILY_UNAVAILABLE"
+
+
+@pytest.mark.postgres
+def test_restricted_auth_rate_limiter_database_failure_returns_503(
+    identity: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity.user(email="restricted@example.com", password="Restricted rate failure 2026")
+    identity.login("restricted@example.com", "Restricted rate failure 2026")
+
+    def fail_consume(*_args: object, **_kwargs: object) -> None:
+        raise SQLAlchemyError("simulated limiter failure")
+
+    monkeypatch.setattr("app.modules.identity.dependencies.consume", fail_consume)
+    response = identity.client.get("/api/v1/auth/session")
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "TEMPORARILY_UNAVAILABLE"
+
+
+@pytest.mark.postgres
+def test_session_route_private_limit_counts_denials_without_touch(
+    identity: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity.user(email="session-limit@example.com", password="Session limiter password 2026")
+    identity.login("session-limit@example.com", "Session limiter password 2026")
+    rule = RateRule("private_session_test", 1, 300)
+    monkeypatch.setattr("app.modules.identity.dependencies.PRIVATE_USER", rule)
+    with identity.factory() as session:
+        model = session.scalar(select(SessionModel))
+        assert model is not None
+        original_last_seen = model.last_seen_at
+
+    assert identity.client.get("/api/v1/auth/session").status_code == 200
+    limited = identity.client.get("/api/v1/auth/session")
+    assert limited.status_code == 429
+    assert int(limited.headers["retry-after"]) > 0
+    with identity.factory() as session:
+        model = session.scalar(select(SessionModel))
+        assert model is not None and model.last_seen_at == original_last_seen
+        assert (
+            session.scalar(
+                text("SELECT count FROM rate_limit_buckets WHERE rule='private_session_test'")
+            )
+            == 2
+        )
+
+
+@pytest.mark.postgres
+def test_change_password_private_limit_prevents_mutation(
+    identity: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user = identity.user(
+        email="change-limit@example.com",
+        password="Temporary limiter password 2026",
+        role="TECHNICIAN",
+        temporary=True,
+    )
+    data = identity.login("change-limit@example.com", "Temporary limiter password 2026")
+    old_cookie = identity.client.cookies["clientops_session_dev"]
+    rule = RateRule("private_change_denied_test", 1, 300)
+    monkeypatch.setattr("app.modules.identity.dependencies.PRIVATE_USER", rule)
+    with identity.factory() as session:
+        saved = session.get(User, user.id)
+        assert saved is not None
+        original_hash = saved.password_hash
+        original_version = saved.version
+        consume(session, identity.settings, rule, str(user.id), NOW)
+
+    limited = identity.client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "current_password": "Temporary limiter password 2026",
+            "new_password": "Permanent limiter password 2026",
+        },
+        headers={"Origin": ORIGIN, "X-CSRF-Token": str(data["csrf_token"])},
+    )
+    assert limited.status_code == 429
+    assert int(limited.headers["retry-after"]) > 0
+    assert identity.client.cookies["clientops_session_dev"] == old_cookie
+    with identity.factory() as session:
+        saved = session.get(User, user.id)
+        sessions = list(
+            session.scalars(select(SessionModel).where(SessionModel.user_id == user.id))
+        )
+        assert saved is not None
+        assert saved.must_change_password
+        assert saved.password_hash == original_hash
+        assert saved.version == original_version
+        assert len(sessions) == 1 and sessions[0].revoked_at is None
+        assert (
+            session.scalar(
+                text("SELECT count FROM rate_limit_buckets WHERE rule='private_change_denied_test'")
+            )
+            == 2
+        )
+
+
+@pytest.mark.postgres
+def test_logout_private_limit_denial_preserves_session_then_normal_logout_clears_it(
+    identity: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user = identity.user(email="logout-limit@example.com", password="Logout limiter password 2026")
+    data = identity.login("logout-limit@example.com", "Logout limiter password 2026")
+    limited_rule = RateRule("private_logout_denied_test", 1, 300)
+    monkeypatch.setattr("app.modules.identity.dependencies.PRIVATE_USER", limited_rule)
+    with identity.factory() as session:
+        consume(session, identity.settings, limited_rule, str(user.id), NOW)
+
+    limited = identity.client.post(
+        "/api/v1/auth/logout",
+        json={},
+        headers={"Origin": ORIGIN, "X-CSRF-Token": str(data["csrf_token"])},
+    )
+    assert limited.status_code == 429
+    assert int(limited.headers["retry-after"]) > 0
+    assert "clientops_session_dev" in identity.client.cookies
+    with identity.factory() as session:
+        model = session.scalar(select(SessionModel).where(SessionModel.user_id == user.id))
+        assert model is not None and model.revoked_at is None
+        assert (
+            session.scalar(
+                text("SELECT count FROM rate_limit_buckets WHERE rule='private_logout_denied_test'")
+            )
+            == 2
+        )
+
+    monkeypatch.setattr(
+        "app.modules.identity.dependencies.PRIVATE_USER",
+        RateRule("private_logout_success_test", 1, 300),
+    )
+    logout = identity.client.post(
+        "/api/v1/auth/logout",
+        json={},
+        headers={"Origin": ORIGIN, "X-CSRF-Token": str(data["csrf_token"])},
+    )
+    assert logout.status_code == 204
+    assert "Max-Age=0" in logout.headers["set-cookie"]
+    with identity.factory() as session:
+        model = session.scalar(select(SessionModel).where(SessionModel.user_id == user.id))
+        assert model is not None and model.revocation_reason == "LOGOUT"
+        assert (
+            session.scalar(
+                text(
+                    "SELECT count FROM rate_limit_buckets WHERE rule='private_logout_success_test'"
+                )
+            )
+            == 1
+        )
 
 
 @pytest.mark.postgres
