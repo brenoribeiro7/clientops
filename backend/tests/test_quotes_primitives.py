@@ -1,9 +1,12 @@
+import base64
+from copy import deepcopy
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
 import pytest
 
+from app.core.errors import FoundationError
 from app.modules.quotes.domain import (
     CalculatedItem,
     build_snapshot,
@@ -16,7 +19,9 @@ from app.modules.quotes.domain import (
     parse_quantity,
     quantity_string,
     quote_number,
+    validate_snapshot,
 )
+from app.modules.quotes.service import parse_public_bearer
 
 
 def test_money_uses_decimal_half_up_per_line() -> None:
@@ -72,7 +77,8 @@ def test_business_date_and_expiry_use_the_current_timezone() -> None:
     assert current_business_date(now, "America/Bahia") == date(2026, 10, 4)
     assert current_business_date(now, "Asia/Tokyo") == date(2026, 10, 5)
     assert is_commercially_expired("SENT", date(2026, 10, 4), date(2026, 10, 5))
-    assert not is_commercially_expired("APPROVED", date(2026, 10, 4), date(2026, 10, 5))
+    for status in ("DRAFT", "APPROVED", "CANCELLED"):
+        assert not is_commercially_expired(status, date(2026, 10, 4), date(2026, 10, 5))
 
 
 def test_snapshot_has_canonical_values_and_no_client_notes() -> None:
@@ -114,3 +120,50 @@ def test_snapshot_has_canonical_values_and_no_client_notes() -> None:
     assert snapshot["business"]["logo"] is None
     assert set(snapshot["client"]) == {"id", "name", "phone", "email", "address"}
     assert quote_number(1_000_000) == "ORC-1000000"
+    assert validate_snapshot(snapshot) == snapshot
+
+    invalid_snapshots = []
+    missing = deepcopy(snapshot)
+    del missing["quote"]["valid_until"]
+    invalid_snapshots.append(missing)
+    wrong_version = deepcopy(snapshot)
+    wrong_version["schema_version"] = 2
+    invalid_snapshots.append(wrong_version)
+    wrong_decimal = deepcopy(snapshot)
+    wrong_decimal["items"][0]["unit_price"] = "100.0"
+    invalid_snapshots.append(wrong_decimal)
+    extra = deepcopy(snapshot)
+    extra["client"]["notes"] = "must remain absent"
+    invalid_snapshots.append(extra)
+    wrong_total = deepcopy(snapshot)
+    wrong_total["total"] = "101.00"
+    invalid_snapshots.append(wrong_total)
+    for invalid in invalid_snapshots:
+        with pytest.raises(ValueError):
+            validate_snapshot(invalid)
+
+
+def test_public_bearer_requires_exact_canonical_32_byte_encoding() -> None:
+    raw = base64.urlsafe_b64encode(bytes(range(32))).rstrip(b"=").decode("ascii")
+    returned, digest = parse_public_bearer(raw)
+    assert returned == raw
+    assert len(digest) == 32
+
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    last_index = alphabet.index(raw[-1])
+    noncanonical = raw[:-1] + alphabet[last_index + 1]
+    invalid_values = [
+        None,
+        "",
+        raw + "=",
+        raw[:-1],
+        raw + "A",
+        "!" * 43,
+        "é" * 43,
+        noncanonical,
+    ]
+    for invalid in invalid_values:
+        with pytest.raises(FoundationError) as captured:
+            parse_public_bearer(invalid)
+        assert getattr(captured.value, "code", None) == "PUBLIC_ACCESS_INVALID"
+        assert raw not in str(captured.value)

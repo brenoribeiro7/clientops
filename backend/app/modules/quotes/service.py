@@ -35,6 +35,7 @@ from app.modules.quotes.domain import (
     parse_quantity,
     quantity_string,
     quote_number,
+    validate_snapshot,
 )
 from app.modules.quotes.models import Quote, QuoteItem, QuotePublicAccess
 from app.modules.quotes.schemas import (
@@ -279,29 +280,26 @@ def _item_data(item: CalculatedItem) -> QuoteItemData:
 
 
 def _snapshot_items(snapshot: dict[str, object]) -> list[QuoteItemData]:
-    raw_items = snapshot.get("items")
-    if not isinstance(raw_items, list):
-        raise ValueError("invalid quote snapshot")
+    raw_items = validate_snapshot(snapshot)["items"]
     return [QuoteItemData.model_validate(item) for item in raw_items]
 
 
 def _admin_snapshot(snapshot: dict[str, object] | None) -> dict[str, object] | None:
     if snapshot is None:
         return None
-    raw_business = snapshot.get("business")
-    if not isinstance(raw_business, dict):
-        raise ValueError("invalid quote snapshot")
+    validated = validate_snapshot(snapshot)
+    raw_business = validated["business"]
     business = dict(raw_business)
     business["has_logo"] = business.pop("logo", None) is not None
     return {
-        "schema_version": snapshot["schema_version"],
-        "quote": snapshot["quote"],
+        "schema_version": validated["schema_version"],
+        "quote": validated["quote"],
         "business": business,
-        "client": snapshot["client"],
-        "items": snapshot["items"],
-        "subtotal": snapshot["subtotal"],
-        "total": snapshot["total"],
-        "notes": snapshot["notes"],
+        "client": validated["client"],
+        "items": validated["items"],
+        "subtotal": validated["subtotal"],
+        "total": validated["total"],
+        "notes": validated["notes"],
     }
 
 
@@ -536,10 +534,20 @@ def _new_access(
     actor_user_id: UUID,
     now: datetime,
     settings: ApiSettings,
+    after: QuotePublicAccess | None = None,
 ) -> tuple[QuotePublicAccess, str]:
     raw = base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode("ascii")
+    access_id = uuid4()
+    if after is not None and after.created_at == now and access_id.int <= after.id.int:
+        if after.id.int == 2**128 - 1:
+            raise FoundationError(
+                status_code=503,
+                code="RETRYABLE_TRANSACTION",
+                message="Tente novamente em instantes.",
+            )
+        access_id = UUID(int=after.id.int + 1)
     model = QuotePublicAccess(
-        id=uuid4(),
+        id=access_id,
         quote_id=quote.id,
         bearer_hash=hashlib.sha256(raw.encode("ascii")).digest(),
         created_by=actor_user_id,
@@ -626,7 +634,12 @@ def send_quote(
         quote.sent_at = now
         quote.updated_at = now
         quote.version += 1
-        access, raw = _new_access(quote, actor_user_id=actor_user_id, now=now, settings=settings)
+        access, raw = _new_access(
+            quote,
+            actor_user_id=actor_user_id,
+            now=now,
+            settings=settings,
+        )
         session.add(access)
         _event(
             session,
@@ -815,7 +828,14 @@ def rotate_access(
         if latest is not None and latest.revoked_at is None:
             latest.revoked_at = now
             latest.revocation_reason = "ROTATED"
-        access, raw = _new_access(quote, actor_user_id=actor_user_id, now=now, settings=settings)
+            session.flush()
+        access, raw = _new_access(
+            quote,
+            actor_user_id=actor_user_id,
+            now=now,
+            settings=settings,
+            after=latest,
+        )
         session.add(access)
         _event(
             session,
@@ -912,7 +932,7 @@ def public_quote(
         raise public_access_invalid()
     profile = _profile(session, lock=False)
     today = _business_today(profile, now)
-    snapshot = quote.commercial_snapshot
+    snapshot = validate_snapshot(quote.commercial_snapshot)
     business = snapshot["business"]
     client = snapshot["client"]
     raw_items = snapshot["items"]

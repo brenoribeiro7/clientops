@@ -19,6 +19,7 @@ from sqlalchemy import create_engine, event, func, select, text, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.requests import Request
 
 from app.core.clock import Clock
 from app.core.config import ApiSettings
@@ -29,6 +30,7 @@ from app.main import create_app
 from app.modules.business.models import BusinessProfile
 from app.modules.business.schemas import BusinessProfilePatch
 from app.modules.business.service import update_profile
+from app.modules.identity.dependencies import AuthContext, revalidate_private_command
 from app.modules.identity.models import Session as SessionModel
 from app.modules.identity.models import User
 from app.modules.identity.passwords import hash_password, needs_rehash, verify_password
@@ -1509,6 +1511,40 @@ def test_password_change_serializes_with_private_profile_command(identity: Harne
             )
             == 1
         )
+
+
+@pytest.mark.postgres
+def test_private_retry_revalidation_does_not_repeat_rate_or_session_touch(
+    identity: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user = identity.user(email="retry@example.com", password="Retry boundary password 2026")
+    identity.login("retry@example.com", "Retry boundary password 2026")
+    raw = identity.client.cookies["clientops_session_dev"]
+    request = Request({"type": "http", "app": identity.app, "headers": []})
+
+    def unexpected_consume(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("retry consumed PRIVATE_USER again")
+
+    monkeypatch.setattr("app.modules.identity.dependencies.consume", unexpected_consume)
+    with identity.factory() as session:
+        issued = session.scalar(select(SessionModel).where(SessionModel.user_id == user.id))
+        actor = session.get(User, user.id)
+        assert issued is not None and actor is not None
+        original_last_seen = issued.last_seen_at
+        context = AuthContext(issued, actor, raw, identity.clock.current)
+        refreshed = revalidate_private_command(
+            request,
+            session,
+            context,
+            consume_rate_limit=False,
+            touch_session=False,
+        )
+        assert refreshed.user.id == user.id
+        assert refreshed.session.id == issued.id
+        session.commit()
+    with identity.factory() as session:
+        saved = session.get(SessionModel, issued.id)
+        assert saved is not None and saved.last_seen_at == original_last_seen
 
 
 @pytest.mark.postgres

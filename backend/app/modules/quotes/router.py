@@ -102,7 +102,6 @@ PublicBearer = Annotated[
 
 def _secure_mutation(request: Request, context: AuthContext, csrf: str | None) -> None:
     require_trusted_origin(request)
-    _require_json(request)
     validate_csrf(request.app.state.settings, context.raw_bearer, csrf)
 
 
@@ -211,6 +210,7 @@ def add_quote(
     response: Response,
     db: Db,
     context: Admin,
+    _json: Annotated[None, Depends(_require_json)],
     x_csrf_token: CsrfHeader = None,
 ) -> QuoteResponse:
     _secure_mutation(request, context, x_csrf_token)
@@ -243,6 +243,7 @@ def update_quote(
     response: Response,
     db: Db,
     context: Admin,
+    _json: Annotated[None, Depends(_require_json)],
     if_match: IfMatchHeader = None,
     x_csrf_token: CsrfHeader = None,
 ) -> QuoteResponse:
@@ -268,6 +269,7 @@ def issue_quote(
     response: Response,
     db: Db,
     context: Admin,
+    _json: Annotated[None, Depends(_require_json)],
     if_match: IfMatchHeader = None,
     x_csrf_token: CsrfHeader = None,
 ) -> QuoteIssuedResponse:
@@ -299,6 +301,7 @@ def cancel(
     response: Response,
     db: Db,
     context: Admin,
+    _json: Annotated[None, Depends(_require_json)],
     if_match: IfMatchHeader = None,
     x_csrf_token: CsrfHeader = None,
 ) -> QuoteResponse:
@@ -324,6 +327,7 @@ def duplicate(
     response: Response,
     db: Db,
     context: Admin,
+    _json: Annotated[None, Depends(_require_json)],
     x_csrf_token: CsrfHeader = None,
 ) -> QuoteResponse:
     del payload
@@ -348,6 +352,7 @@ def rotate_public_access(
     response: Response,
     db: Db,
     context: Admin,
+    _json: Annotated[None, Depends(_require_json)],
     x_csrf_token: CsrfHeader = None,
 ) -> PublicAccessIssuedResponse:
     _secure_mutation(request, context, x_csrf_token)
@@ -380,6 +385,7 @@ def revoke_public_access(
     response: Response,
     db: Db,
     context: Admin,
+    _json: Annotated[None, Depends(_require_json)],
     x_csrf_token: CsrfHeader = None,
 ) -> PublicAccessResponse:
     del payload
@@ -477,6 +483,7 @@ def approve_public_quote(
     request: Request,
     response: Response,
     db: Db,
+    _json: Annotated[None, Depends(_require_json)],
     _: PublicBearer,
 ) -> PublicApprovalResponse:
     del payload
@@ -489,6 +496,5 @@ def approve_public_quote(
         bearer_rule=PUBLIC_QUOTE_APPROVE_BEARER,
     )
     require_trusted_origin(request)
-    _require_json(request)
     response.headers["Cache-Control"] = "no-store"
     return PublicApprovalResponse(data=approve_quote(db, digest=digest, now=now))
