@@ -20,7 +20,7 @@ def _required_url(name: str) -> str:
 
 
 @pytest.mark.postgres
-def test_cl03_schema_contains_exactly_the_phase_tables() -> None:
+def test_cl04_schema_contains_exactly_the_phase_tables() -> None:
     engine = create_engine(_required_url("MIGRATION_DATABASE_URL"))
     try:
         assert set(inspect(engine).get_table_names(schema="public")) == {
@@ -28,6 +28,9 @@ def test_cl03_schema_contains_exactly_the_phase_tables() -> None:
             "business_profiles",
             "clients",
             "equipment",
+            "quote_items",
+            "quote_public_access",
+            "quotes",
             "rate_limit_buckets",
             "sessions",
             "timeline_events",
@@ -36,7 +39,7 @@ def test_cl03_schema_contains_exactly_the_phase_tables() -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0003_clients_equipment"
+                == "0004_quotes"
             )
     finally:
         engine.dispose()
@@ -49,7 +52,7 @@ def test_runtime_role_can_read_revision_but_cannot_execute_ddl() -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0003_clients_equipment"
+                == "0004_quotes"
             )
             with pytest.raises(DBAPIError):
                 connection.execute(text("CREATE TABLE forbidden_runtime_ddl (id integer)"))
@@ -74,16 +77,12 @@ def test_readiness_rejects_and_recovers_from_migration_mismatch() -> None:
         with TestClient(create_app(settings)) as client:
             assert client.get("/api/v1/health/ready").status_code == 503
         with migration_engine.begin() as connection:
-            connection.execute(
-                text("UPDATE alembic_version SET version_num='0003_clients_equipment'")
-            )
+            connection.execute(text("UPDATE alembic_version SET version_num='0004_quotes'"))
         with TestClient(create_app(settings)) as client:
             assert client.get("/api/v1/health/ready").status_code == 200
     finally:
         with migration_engine.begin() as connection:
-            connection.execute(
-                text("UPDATE alembic_version SET version_num='0003_clients_equipment'")
-            )
+            connection.execute(text("UPDATE alembic_version SET version_num='0004_quotes'"))
         migration_engine.dispose()
 
 
@@ -133,7 +132,23 @@ def test_runtime_grants_are_least_privilege() -> None:
             "SELECT",
             "INSERT",
         }
-        assert all(privilege not in {"TRUNCATE", "DELETE"} for _, privilege in grants)
+        assert {privilege for table, privilege in grants if table == "quotes"} == {
+            "SELECT",
+            "INSERT",
+        }
+        assert {privilege for table, privilege in grants if table == "quote_items"} == {
+            "SELECT",
+            "INSERT",
+            "DELETE",
+        }
+        assert {privilege for table, privilege in grants if table == "quote_public_access"} == {
+            "SELECT",
+            "INSERT",
+        }
+        assert all(
+            privilege != "TRUNCATE" and (privilege != "DELETE" or table == "quote_items")
+            for table, privilege in grants
+        )
     finally:
         engine.dispose()
 
@@ -189,9 +204,36 @@ def test_runtime_update_grants_exclude_immutable_columns() -> None:
         assert ("equipment", "name") in update_columns
         assert ("clients", "created_at") not in update_columns
         assert ("clients", "name") in update_columns
+        assert ("quotes", "number") not in update_columns
+        assert ("quotes", "source_quote_id") not in update_columns
+        assert ("quotes", "status") in update_columns
+        assert ("quote_items", "quote_id") not in update_columns
+        assert ("quote_items", "description") in update_columns
+        assert ("quote_public_access", "bearer_hash") not in update_columns
+        assert ("quote_public_access", "revoked_at") in update_columns
     finally:
         with migration.begin() as connection:
             connection.execute(text("DELETE FROM equipment WHERE id=:id"), {"id": equipment_id})
             connection.execute(text("DELETE FROM clients WHERE id=:id"), {"id": client_id})
         engine.dispose()
+        migration.dispose()
+
+
+@pytest.mark.postgres
+def test_runtime_has_only_usage_on_quote_number_sequence() -> None:
+    migration = create_engine(_required_url("MIGRATION_DATABASE_URL"))
+    try:
+        with migration.connect() as connection:
+            privileges = {
+                row.privilege_type
+                for row in connection.execute(
+                    text(
+                        "SELECT privilege_type FROM information_schema.role_usage_grants "
+                        "WHERE grantee='clientops_runtime' AND object_schema='public' "
+                        "AND object_name='quote_number_seq'"
+                    )
+                )
+            }
+        assert privileges == {"USAGE"}
+    finally:
         migration.dispose()
