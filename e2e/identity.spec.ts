@@ -13,7 +13,13 @@ async function login(
   await page.goto("/login");
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(password);
+  const response = page.waitForResponse(
+    (candidate) =>
+      candidate.url().includes("/api/v1/auth/login") &&
+      candidate.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Entrar" }).click();
+  await response;
 }
 
 test("árvore pública /q não consulta sessão privada", async ({ page }) => {

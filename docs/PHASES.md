@@ -212,3 +212,9 @@ CL-00-FIX STATUS: READY FOR RE-AUDIT
 A feature `feat/cl-02-identity-sessions-security` implementa a migration `0002`, auth/session/cookie/CSRF/origin, rate limiting PostgreSQL, BusinessProfile/User/timeline, CLI segura, OpenAPI/TS, frontend privado e isolamento `/q`. O scope audit encontra somente as cinco tabelas autorizadas e nenhuma entidade CL-03+.
 
 Os gates locais de unidade, PostgreSQL, Compose, frontend, HTTP multi-browser e HTTPS identity/security passaram conforme TESTING: 50 pytest sem PostgreSQL, 34 PostgreSQL, 8 Compose/artefatos, 9 Vitest, 100 HTTP Playwright pass/8 skips esperados e 9 HTTPS pass. O benchmark Argon2 hash/verify real está em SECURITY. Os jobs GitHub CL-02 estão definidos com `cl02-gate` exigindo `success` de todos os resultados; a execução GitHub no SHA final ainda será registrada. A fase permanece aberta para Implementation Audit e não é declarada CLOSED neste documento.
+
+## Execução CL-03 — checkpoint de implementação
+
+A feature `feat/cl-03-clients-equipment` implementa migration 0003, Client/Equipment, ownership aninhado, archive/restore versionado, timeline do cliente, OpenAPI/TS e telas Admin responsivas. Os jobs `clients-integration`, `clients-e2e` e `cl03-gate` elevam o workflow para 14 jobs e preservam os gates CL-01/02.
+
+DOM-09 é `PASS — CL-03 APPLICABLE SUBSET`: archive/restore, histórico, ausência de cascade, ownership e rejeição de novo Equipment sob Client arquivado foram materializados. Quote selection/send e snapshot permanecem CL-04; execução e snapshot de OS permanecem CL-05. A fase aguarda Implementation Audit e não é declarada CLOSED neste documento.

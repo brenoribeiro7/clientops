@@ -184,3 +184,11 @@ As senhas PostgreSQL do bootstrap são aplicadas apenas quando `pg_data` é inic
 A migration `0002_identity_sessions_security` cria exatamente `business_profiles`, `users`, `sessions`, `rate_limit_buckets` e `timeline_events`. A API usa uma `Session` SQLAlchemy por request/comando e transações técnicas independentes para rate limiting. O runtime recebe `SELECT,UPDATE` no singleton BusinessProfile, `SELECT,INSERT` na timeline append-only e não recebe DDL.
 
 O backend organiza identidade, perfil e timeline em módulos, mantém apenas SHA-256 do bearer e coordena cap de sessão, último Admin e buckets pelo PostgreSQL. Um advisory lock transacional serializa comandos privados nesta instalação pequena; a autorização é revalidada sob lock do User/Session e permanece na transação do comando. A árvore React pública `/q` monta `PublicLayout` sem `AuthInfrastructure` ou QueryClient privado; login, troca de senha e rotas privadas montam o provider e TanStack Query. O teste de isolamento observa zero requests para `/auth/session` ao abrir `/q`.
+
+## Implementação CL-03
+
+A migration `0003_clients_equipment` acrescenta `clients`, `equipment` e `timeline_events.client_id` nullable. O índice de timeline é parcial para clientes, constraints antigas permanecem válidas e o downgrade destrutivo é recusado. A role runtime recebe SELECT/INSERT e UPDATE somente nas colunas mutáveis; `equipment.client_id` fica imutável e FKs usam RESTRICT.
+
+O módulo `clients` separa schemas, repository, service e router. Operações de filho bloqueiam Client antes de Equipment; criação de Equipment e archive do Client compartilham a mesma raiz para serialização. Mudança de domínio e evento usam a mesma Session/commit. Listas aplicam filtro e contagem no PostgreSQL, busca ILIKE escapada e ordenação determinística.
+
+No frontend, `/admin/clients` e `/admin/clients/:clientId` são chunks lazy dentro da infraestrutura privada existente. TanStack Query mantém chaves separadas para lista, detalhe, equipamentos e timeline; mutations invalidam somente contextos relacionados. `/q` e o shell Técnico continuam isolados. Nenhuma dependência, serviço pago, worker ou entidade CL-04+ foi adicionada.

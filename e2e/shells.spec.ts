@@ -29,7 +29,13 @@ test("Drawer administrativo restaura foco", async ({ page }, testInfo) => {
   await page.goto("/login");
   await page.getByLabel("E-mail").fill("admin.e2e@example.com");
   await page.getByLabel("Senha").fill("ClientOps E2E admin password 2026!");
+  const response = page.waitForResponse(
+    (candidate) =>
+      candidate.url().includes("/api/v1/auth/login") &&
+      candidate.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Entrar" }).click();
+  await response;
   await expect(
     page.getByRole("heading", { name: "Visão administrativa" }),
   ).toBeVisible();

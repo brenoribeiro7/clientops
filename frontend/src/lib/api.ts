@@ -4,14 +4,22 @@ export type SessionData = components["schemas"]["SessionData"];
 export type UserData = components["schemas"]["UserData"];
 export type UserPage = components["schemas"]["UserPage"];
 export type BusinessProfileData = components["schemas"]["BusinessProfileData"];
+export type ClientData = components["schemas"]["ClientData"];
+export type ClientPage = components["schemas"]["ClientPage"];
+export type EquipmentData = components["schemas"]["EquipmentData"];
+export type EquipmentPage = components["schemas"]["EquipmentPage"];
+export type TimelinePage = components["schemas"]["TimelinePage"];
 
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly code: string,
     public readonly details: Record<string, unknown>,
+    public readonly fields: Array<{ field: string; message: string }> = [],
+    public readonly requestId = "",
+    message = code,
   ) {
-    super(code);
+    super(message);
   }
 }
 
@@ -35,12 +43,21 @@ export async function apiRequest<T>(
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
-      error?: { code?: string; details?: Record<string, unknown> };
+      error?: {
+        code?: string;
+        message?: string;
+        details?: Record<string, unknown>;
+        fields?: Array<{ field: string; message: string }>;
+        request_id?: string;
+      };
     } | null;
     throw new ApiError(
       response.status,
       body?.error?.code ?? "REQUEST_FAILED",
       body?.error?.details ?? {},
+      body?.error?.fields ?? [],
+      body?.error?.request_id ?? "",
+      body?.error?.message,
     );
   }
   const body = response.status === 204 ? undefined : ((await response.json()) as T);

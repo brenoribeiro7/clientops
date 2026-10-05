@@ -19,6 +19,8 @@ const TechnicianLayout = lazy(() =>
 const PublicLayout = lazy(() =>
   import("./layouts/PublicLayout").then((module) => ({ default: module.PublicLayout })),
 );
+const ClientListPage = lazy(() => import("../features/clients/ClientListPage"));
+const ClientDetailPage = lazy(() => import("../features/clients/ClientDetailPage"));
 
 function LoadingRoute() {
   return (
@@ -67,6 +69,8 @@ export const routes: RouteObject[] = [
                   { path: "account", element: <AccountPage /> },
                   { path: "settings", element: <BusinessSettingsPage /> },
                   { path: "settings/users", element: <UsersPage /> },
+                  { path: "clients", element: lazyElement(<ClientListPage />) },
+                  { path: "clients/:clientId", element: lazyElement(<ClientDetailPage />) },
                   { path: "*", element: <NotFoundPage home="/admin" /> },
                 ],
               },

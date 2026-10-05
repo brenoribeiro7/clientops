@@ -1,4 +1,4 @@
-name: CL-02 Identity, Sessions & Security
+name: CL-03 Clients & Equipment
 
 on:
   pull_request:
@@ -70,6 +70,12 @@ jobs:
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env pull db
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml build migrate test
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env up -d --wait --wait-timeout 180 db
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env run --rm migrate alembic upgrade 0002_identity_sessions_security
+      - run: >-
+          docker compose --env-file infra/images.env --env-file .local/compose.env
+          -f compose.yaml -f compose.test.yaml run --rm --no-deps
+          -e CL03_UPGRADE_TEST=1 test
+          pytest tests/test_cl03_migration_upgrade.py -m postgres
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env run --rm migrate
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env run --rm migrate alembic check
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm test pytest -m postgres
@@ -144,7 +150,10 @@ jobs:
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml build browser-test test
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml up -d --wait --wait-timeout 180
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm test python -m app.cli.seed_test_identity --reset
-      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm browser-test
+      - run: >-
+          docker compose --env-file infra/images.env --env-file .local/compose.env
+          -f compose.yaml -f compose.test.yaml run --rm browser-test
+          npm run test:e2e -- --grep-invert @cl03
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml down
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml -f compose.tls.yaml up -d --wait --wait-timeout 180
       - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm test python -m app.cli.seed_test_identity --reset
@@ -289,6 +298,90 @@ jobs:
             "$IDENTITY_INTEGRATION" \
             "$IDENTITY_SECURITY" \
             "$IDENTITY_E2E"
+          do
+            test "$result" = success
+          done
+
+  clients-integration:
+    needs: [backend-quality, database-migration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: python infra/dev-env.py
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml build migrate test
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env up -d --wait --wait-timeout 180 db
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env run --rm migrate
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm test pytest tests/test_clients_postgres.py -m postgres
+      - if: ${{ always() }}
+        run: docker compose --env-file infra/images.env --env-file .local/compose.env down --volumes --remove-orphans
+
+  clients-e2e:
+    needs: [frontend-quality, clients-integration, identity-security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: python infra/dev-env.py
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml build browser-test test
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml up -d --wait --wait-timeout 180
+      - run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml run --rm test python -m app.cli.seed_test_identity --reset
+      - run: >-
+          docker compose --env-file infra/images.env --env-file .local/compose.env
+          -f compose.yaml -f compose.test.yaml run --rm browser-test
+          npm run test:e2e -- --grep @cl03
+      - if: ${{ always() }}
+        run: docker compose --env-file infra/images.env --env-file .local/compose.env -f compose.yaml -f compose.test.yaml down --volumes --remove-orphans
+
+  cl03-gate:
+    if: ${{ always() }}
+    needs:
+      - backend-quality
+      - frontend-quality
+      - database-migration
+      - contract-drift
+      - compose-smoke
+      - security-foundation
+      - cl01-gate
+      - identity-integration
+      - identity-security
+      - identity-e2e
+      - cl02-gate
+      - clients-integration
+      - clients-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every CL-01, CL-02, and CL-03 job to succeed
+        env:
+          BACKEND_QUALITY: ${{ needs.backend-quality.result }}
+          FRONTEND_QUALITY: ${{ needs.frontend-quality.result }}
+          DATABASE_MIGRATION: ${{ needs.database-migration.result }}
+          CONTRACT_DRIFT: ${{ needs.contract-drift.result }}
+          COMPOSE_SMOKE: ${{ needs.compose-smoke.result }}
+          SECURITY_FOUNDATION: ${{ needs.security-foundation.result }}
+          CL01_GATE: ${{ needs.cl01-gate.result }}
+          IDENTITY_INTEGRATION: ${{ needs.identity-integration.result }}
+          IDENTITY_SECURITY: ${{ needs.identity-security.result }}
+          IDENTITY_E2E: ${{ needs.identity-e2e.result }}
+          CL02_GATE: ${{ needs.cl02-gate.result }}
+          CLIENTS_INTEGRATION: ${{ needs.clients-integration.result }}
+          CLIENTS_E2E: ${{ needs.clients-e2e.result }}
+        run: |
+          for result in \
+            "$BACKEND_QUALITY" \
+            "$FRONTEND_QUALITY" \
+            "$DATABASE_MIGRATION" \
+            "$CONTRACT_DRIFT" \
+            "$COMPOSE_SMOKE" \
+            "$SECURITY_FOUNDATION" \
+            "$CL01_GATE" \
+            "$IDENTITY_INTEGRATION" \
+            "$IDENTITY_SECURITY" \
+            "$IDENTITY_E2E" \
+            "$CL02_GATE" \
+            "$CLIENTS_INTEGRATION" \
+            "$CLIENTS_E2E"
           do
             test "$result" = success
           done

@@ -53,3 +53,30 @@ def test_logs_include_only_validated_normalized_client_ip(
     logs = capsys.readouterr().err
     assert raw_header not in logs
     assert '"client_ip":"2001:db8::1"' in logs
+
+
+def test_client_contact_body_and_query_canaries_are_absent_from_logs(
+    settings: ApiSettings, capsys: CaptureFixture[str]
+) -> None:
+    canaries = (
+        "PHONE-CANARY-0303",
+        "EMAIL-CANARY-0303",
+        "ADDRESS-CANARY-0303",
+        "NOTES-CANARY-0303",
+        "QUERY-CANARY-0303",
+    )
+    with TestClient(create_app(settings), client=("198.51.100.31", 50000)) as direct:
+        direct.get(f"/api/v1/clients?q={canaries[-1]}")
+        direct.post(
+            "/api/v1/clients",
+            json={
+                "name": "Client",
+                "phone": canaries[0],
+                "email": canaries[1],
+                "address": canaries[2],
+                "notes": canaries[3],
+            },
+        )
+    logs = capsys.readouterr().err
+    for canary in canaries:
+        assert canary not in logs

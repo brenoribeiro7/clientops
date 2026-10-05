@@ -18,7 +18,14 @@ const strictCsp = [
   "form-action 'self'",
 ].join("; ");
 
-for (const path of ["/q", "/login", "/admin/deep", "/tech/deep"]) {
+for (const path of [
+  "/q",
+  "/login",
+  "/admin/deep",
+  "/admin/clients",
+  "/admin/clients/00000000-0000-4000-8000-000000000003",
+  "/tech/deep",
+]) {
   test(`${path} recebe SEC-05 no documento servido`, async ({ page }) => {
     const response = await page.goto(path);
     expect(response?.headers()["content-security-policy"]).toBe(strictCsp);
