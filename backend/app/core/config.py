@@ -57,6 +57,7 @@ class ApiSettings(BaseSettings):
     SESSION_IDLE_SECONDS: int = 1800
     SESSION_ABSOLUTE_SECONDS: int = 43200
     SESSION_TOUCH_SECONDS: int = 60
+    QUOTE_TOKEN_TTL_SECONDS: int = 2592000
 
     @field_validator("CSRF_HMAC_KEY", "RATE_LIMIT_HMAC_KEY")
     @classmethod
@@ -90,6 +91,13 @@ class ApiSettings(BaseSettings):
     def validate_positive_duration(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("deve ser positivo")
+        return value
+
+    @field_validator("QUOTE_TOKEN_TTL_SECONDS")
+    @classmethod
+    def validate_quote_token_ttl(cls, value: int) -> int:
+        if value != 2592000:
+            raise ValueError("deve permanecer em 2592000 segundos nesta versão")
         return value
 
     @property

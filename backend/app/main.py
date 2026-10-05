@@ -16,6 +16,8 @@ from app.health import router as health_router
 from app.modules.business.router import router as business_router
 from app.modules.clients.router import router as clients_router
 from app.modules.identity.router import router as identity_router
+from app.modules.quotes.router import public_router as public_quotes_router
+from app.modules.quotes.router import router as quotes_router
 
 
 def create_app(settings: ApiSettings | None = None) -> FastAPI:
@@ -49,4 +51,6 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     app.include_router(identity_router)
     app.include_router(business_router)
     app.include_router(clients_router)
+    app.include_router(quotes_router)
+    app.include_router(public_quotes_router)
     return app

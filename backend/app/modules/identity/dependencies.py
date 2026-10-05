@@ -100,10 +100,13 @@ def require_restricted(
     return context
 
 
-def require_unrestricted(
+def revalidate_private_command(
     request: Request,
-    db: Annotated[Session, Depends(get_db)],
-    context: Annotated[AuthContext, Depends(require_restricted)],
+    db: Session,
+    context: AuthContext,
+    *,
+    consume_rate_limit: bool = True,
+    touch_session: bool = True,
 ) -> AuthContext:
     # Keep authorization and the command in one transaction. Password changes,
     # resets, and disables lock the user row before revoking its sessions.
@@ -129,21 +132,32 @@ def require_unrestricted(
             code="PASSWORD_CHANGE_REQUIRED",
             message="Troque a senha temporária antes de continuar.",
         )
-    consume_private_user_rate(request, AuthContext(model, user, context.raw_bearer, context.now))
-    threshold = context.now - timedelta(seconds=settings.SESSION_TOUCH_SECONDS)
-    db.execute(
-        update(SessionModel)
-        .where(
-            SessionModel.id == context.session.id,
-            SessionModel.revoked_at.is_(None),
-            SessionModel.absolute_expires_at > context.now,
-            SessionModel.last_seen_at
-            > context.now - timedelta(seconds=settings.SESSION_IDLE_SECONDS),
-            SessionModel.last_seen_at <= threshold,
+    refreshed = AuthContext(model, user, context.raw_bearer, context.now)
+    if consume_rate_limit:
+        consume_private_user_rate(request, refreshed)
+    if touch_session:
+        threshold = context.now - timedelta(seconds=settings.SESSION_TOUCH_SECONDS)
+        db.execute(
+            update(SessionModel)
+            .where(
+                SessionModel.id == context.session.id,
+                SessionModel.revoked_at.is_(None),
+                SessionModel.absolute_expires_at > context.now,
+                SessionModel.last_seen_at
+                > context.now - timedelta(seconds=settings.SESSION_IDLE_SECONDS),
+                SessionModel.last_seen_at <= threshold,
+            )
+            .values(last_seen_at=context.now)
         )
-        .values(last_seen_at=context.now)
-    )
-    return AuthContext(model, user, context.raw_bearer, context.now)
+    return refreshed
+
+
+def require_unrestricted(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    context: Annotated[AuthContext, Depends(require_restricted)],
+) -> AuthContext:
+    return revalidate_private_command(request, db, context)
 
 
 def require_admin(

@@ -45,6 +45,12 @@ LOGIN_EMAIL = RateRule("login_email", 10, 900)
 LOGIN_INSTALLATION = RateRule("login_installation", 100, 60)
 RESET_ADMIN = RateRule("reset_admin", 10, 3600)
 PRIVATE_USER = RateRule("private_user", 600, 300)
+PUBLIC_QUOTE_GET_INSTALLATION = RateRule("public_quote_get_installation", 600, 60)
+PUBLIC_QUOTE_GET_IP = RateRule("public_quote_get_ip", 120, 60)
+PUBLIC_QUOTE_GET_BEARER = RateRule("public_quote_get_bearer", 60, 60)
+PUBLIC_QUOTE_APPROVE_INSTALLATION = RateRule("public_quote_approve_installation", 100, 60)
+PUBLIC_QUOTE_APPROVE_IP = RateRule("public_quote_approve_ip", 20, 600)
+PUBLIC_QUOTE_APPROVE_BEARER = RateRule("public_quote_approve_bearer", 5, 600)
 
 
 def _key(settings: ApiSettings, value: str) -> bytes:
