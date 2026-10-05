@@ -11,6 +11,7 @@ function AdminNavigation() {
         Início
       </NavigationLink>
       <NavigationLink to="/admin/clients">Clientes</NavigationLink>
+      <NavigationLink to="/admin/quotes">Orçamentos</NavigationLink>
       <NavigationLink to="/admin/settings">Empresa</NavigationLink>
       <NavigationLink to="/admin/settings/users">Usuários</NavigationLink>
       <NavigationLink to="/admin/account">Minha conta</NavigationLink>

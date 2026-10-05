@@ -21,7 +21,7 @@ describe("shells da Foundation", () => {
   });
 
   it.each([
-    ["/q", "Fundação da experiência pública"],
+    ["/q", "Orçamento indisponível"],
     ["/login", "Entrar no ClientOps"],
   ])("renderiza %s sem conteúdo comercial fictício", async (path, heading) => {
     vi.stubGlobal(

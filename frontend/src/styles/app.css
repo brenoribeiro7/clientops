@@ -382,6 +382,22 @@ button:disabled {
   color: var(--color-muted);
 }
 
+.status-badge--draft,
+.status-badge--sent {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.status-badge--approved {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.status-badge--cancelled {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
 .detail-section {
   margin-top: 1.5rem;
 }
@@ -447,6 +463,98 @@ button:disabled {
   background: var(--color-info-bg);
 }
 
+.status-message--success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.status-message--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.quote-items,
+.quote-item-editor,
+.action-panel,
+.inline-action,
+.approval-confirm,
+.public-quote,
+.public-quote__contact {
+  display: grid;
+  gap: 1rem;
+}
+
+.quote-items {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.quote-item-editor {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.authoritative-total {
+  padding: 0.75rem;
+  background: var(--color-canvas);
+}
+
+.quote-table-wrap {
+  overflow-x: auto;
+}
+
+.quote-table {
+  width: 100%;
+  margin-top: 1rem;
+  border-collapse: collapse;
+}
+
+.quote-table th,
+.quote-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.quote-table th:first-child,
+.quote-table td:first-child {
+  width: 100%;
+  min-width: 14rem;
+  white-space: normal;
+}
+
+.public-quote__heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.public-quote__heading p,
+.public-quote__contact h2,
+.public-quote__contact address {
+  margin: 0;
+}
+
+.public-quote__approve {
+  width: 100%;
+}
+
+.approval-confirm,
+.public-quote__contact {
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.public-quote__contact address {
+  font-style: normal;
+}
+
 .back-link {
   display: inline-block;
   margin-bottom: 1rem;
@@ -471,6 +579,11 @@ button:disabled {
   .resource-card {
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
+  }
+
+  .quote-item-editor {
+    grid-template-columns: minmax(15rem, 2fr) repeat(2, minmax(8rem, 1fr)) auto;
+    align-items: end;
   }
 }
 

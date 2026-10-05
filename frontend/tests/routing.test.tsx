@@ -32,7 +32,7 @@ it("mantém /q fora da infraestrutura privada de autenticação", async () => {
   vi.stubGlobal("fetch", fetchMock);
   renderPath("/q");
   expect(
-    await screen.findByRole("heading", { name: "Fundação da experiência pública" }),
+    await screen.findByRole("heading", { name: "Orçamento indisponível" }),
   ).toBeInTheDocument();
   expect(fetchMock).not.toHaveBeenCalled();
   vi.unstubAllGlobals();

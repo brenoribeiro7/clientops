@@ -8,7 +8,12 @@ export type ClientData = components["schemas"]["ClientData"];
 export type ClientPage = components["schemas"]["ClientPage"];
 export type EquipmentData = components["schemas"]["EquipmentData"];
 export type EquipmentPage = components["schemas"]["EquipmentPage"];
-export type TimelinePage = components["schemas"]["TimelinePage"];
+export type TimelinePage = components["schemas"]["app__modules__quotes__schemas__TimelinePage"];
+export type QuoteDetail = components["schemas"]["QuoteDetail"];
+export type QuotePage = components["schemas"]["QuotePage"];
+export type PublicQuoteData = components["schemas"]["PublicQuoteData"];
+export type PublicApprovalData = components["schemas"]["PublicApprovalData"];
+export type IssuedPublicAccess = components["schemas"]["IssuedPublicAccess"];
 
 export class ApiError extends Error {
   constructor(

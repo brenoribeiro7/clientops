@@ -281,6 +281,212 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Public Quote */
+        get: operations["read_public_quote_api_v1_public_quote_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/quote/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Public Quote */
+        post: operations["approve_public_quote_api_v1_public_quote_approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/quote/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Quote Logo */
+        get: operations["public_quote_logo_api_v1_public_quote_logo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quotes */
+        get: operations["quotes_api_v1_quotes_get"];
+        put?: never;
+        /** Add Quote */
+        post: operations["add_quote_api_v1_quotes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{quote_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quote */
+        get: operations["get_quote_api_v1_quotes__quote_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Quote */
+        patch: operations["update_quote_api_v1_quotes__quote_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/quotes/{quote_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_api_v1_quotes__quote_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{quote_id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Duplicate */
+        post: operations["duplicate_api_v1_quotes__quote_id__duplicate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{quote_id}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quote Logo */
+        get: operations["quote_logo_api_v1_quotes__quote_id__logo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{quote_id}/public-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate Public Access */
+        post: operations["rotate_public_access_api_v1_quotes__quote_id__public_access_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{quote_id}/public-access/{access_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Public Access */
+        post: operations["revoke_public_access_api_v1_quotes__quote_id__public_access__access_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{quote_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Quote */
+        post: operations["issue_quote_api_v1_quotes__quote_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{quote_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quote Timeline */
+        get: operations["quote_timeline_api_v1_quotes__quote_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -372,6 +578,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ApproveInput */
+        ApproveInput: {
+            /**
+             * Accept
+             * @constant
+             */
+            accept: true;
+        };
         /** BusinessProfileData */
         BusinessProfileData: {
             /** Address */
@@ -428,6 +642,11 @@ export interface components {
         /** BusinessProfileResponse */
         BusinessProfileResponse: {
             data: components["schemas"]["BusinessProfileData"];
+        };
+        /** CancelInput */
+        CancelInput: {
+            /** Reason */
+            reason: string;
         };
         /** ChangePasswordInput */
         ChangePasswordInput: {
@@ -710,6 +929,23 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** IssuedPublicAccess */
+        IssuedPublicAccess: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Share Url */
+            share_url: string;
+        };
         /** LoginInput */
         LoginInput: {
             /** Email */
@@ -727,6 +963,332 @@ export interface components {
             total: number;
             /** Total Pages */
             total_pages: number;
+        };
+        /** PublicAccessData */
+        PublicAccessData: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Revoked At */
+            revoked_at: string | null;
+        };
+        /** PublicAccessIssuedResponse */
+        PublicAccessIssuedResponse: {
+            data: components["schemas"]["IssuedPublicAccess"];
+        };
+        /** PublicAccessResponse */
+        PublicAccessResponse: {
+            data: components["schemas"]["PublicAccessData"];
+        };
+        /** PublicApprovalData */
+        PublicApprovalData: {
+            /**
+             * Approved At
+             * Format: date-time
+             */
+            approved_at: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "APPROVED";
+        };
+        /** PublicApprovalResponse */
+        PublicApprovalResponse: {
+            data: components["schemas"]["PublicApprovalData"];
+        };
+        /** PublicBusiness */
+        PublicBusiness: {
+            /** Address */
+            address: string;
+            /** Email */
+            email: string;
+            /** Has Logo */
+            has_logo: boolean;
+            /** Phone */
+            phone: string;
+            /** Trade Name */
+            trade_name: string;
+        };
+        /** PublicClient */
+        PublicClient: {
+            /** Name */
+            name: string;
+        };
+        /** PublicQuoteData */
+        PublicQuoteData: {
+            /** Approved At */
+            approved_at: string | null;
+            business: components["schemas"]["PublicBusiness"];
+            /**
+             * Business Today
+             * Format: date
+             */
+            business_today: string;
+            /** Can Approve */
+            can_approve: boolean;
+            client: components["schemas"]["PublicClient"];
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "BRL";
+            /** Is Expired */
+            is_expired: boolean;
+            /** Items */
+            items: components["schemas"]["PublicQuoteItem"][];
+            /** Notes */
+            notes: string | null;
+            /** Number */
+            number: string;
+            /**
+             * Sent At
+             * Format: date-time
+             */
+            sent_at: string;
+            /**
+             * Server Now
+             * Format: date-time
+             */
+            server_now: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "SENT" | "APPROVED";
+            /** Subtotal */
+            subtotal: string;
+            /** Total */
+            total: string;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+        };
+        /** PublicQuoteItem */
+        PublicQuoteItem: {
+            /** Description */
+            description: string;
+            /** Line Total */
+            line_total: string;
+            /** Position */
+            position: number;
+            /** Quantity */
+            quantity: string;
+            /** Unit Price */
+            unit_price: string;
+        };
+        /** PublicQuoteResponse */
+        PublicQuoteResponse: {
+            data: components["schemas"]["PublicQuoteData"];
+        };
+        /** QuoteCreate */
+        QuoteCreate: {
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+            /** Items */
+            items?: components["schemas"]["QuoteItemInput"][];
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+        };
+        /** QuoteDetail */
+        QuoteDetail: {
+            /** Approved At */
+            approved_at: string | null;
+            /** Cancellation Reason */
+            cancellation_reason: string | null;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+            /** Commercial Snapshot */
+            commercial_snapshot: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "BRL";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Expired */
+            is_expired: boolean;
+            /** Items */
+            items: components["schemas"]["QuoteItemData"][];
+            /** Notes */
+            notes: string | null;
+            /** Number */
+            number: string;
+            public_access: components["schemas"]["PublicAccessData"] | null;
+            /** Sent At */
+            sent_at: string | null;
+            /** Source Quote Id */
+            source_quote_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "DRAFT" | "SENT" | "APPROVED" | "CANCELLED";
+            /** Subtotal */
+            subtotal: string;
+            /** Total */
+            total: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+            /** Version */
+            version: number;
+        };
+        /** QuoteIssuedResponse */
+        QuoteIssuedResponse: {
+            data: components["schemas"]["QuoteDetail"];
+            public_access: components["schemas"]["IssuedPublicAccess"];
+        };
+        /** QuoteItemData */
+        QuoteItemData: {
+            /** Description */
+            description: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Line Total */
+            line_total: string;
+            /** Position */
+            position: number;
+            /** Quantity */
+            quantity: string;
+            /** Unit Price */
+            unit_price: string;
+        };
+        /** QuoteItemInput */
+        QuoteItemInput: {
+            /** Description */
+            description: string;
+            /** Id */
+            id?: string | null;
+            /** Position */
+            position: number;
+            /** Quantity */
+            quantity: string;
+            /** Unit Price */
+            unit_price: string;
+        };
+        /** QuotePage */
+        QuotePage: {
+            /** Data */
+            data: components["schemas"]["QuoteSummary"][];
+            page: components["schemas"]["PageData"];
+        };
+        /** QuotePatch */
+        QuotePatch: {
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id?: string;
+            /** Items */
+            items?: components["schemas"]["QuoteItemInput"][];
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until?: string;
+        };
+        /** QuoteResponse */
+        QuoteResponse: {
+            data: components["schemas"]["QuoteDetail"];
+        };
+        /** QuoteSummary */
+        QuoteSummary: {
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "BRL";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Expired */
+            is_expired: boolean;
+            /** Number */
+            number: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "DRAFT" | "SENT" | "APPROVED" | "CANCELLED";
+            /** Subtotal */
+            subtotal: string;
+            /** Total */
+            total: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Valid Until
+             * Format: date
+             */
+            valid_until: string;
+            /** Version */
+            version: number;
+        };
+        /** RotateInput */
+        RotateInput: {
+            /** Expected Access Id */
+            expected_access_id: string | null;
         };
         /** SessionData */
         SessionData: {
@@ -752,42 +1314,6 @@ export interface components {
         /** SessionResponse */
         SessionResponse: {
             data: components["schemas"]["SessionData"];
-        };
-        /** TimelineActor */
-        TimelineActor: {
-            /** Display Name */
-            display_name: string;
-            /**
-             * Type
-             * @enum {string}
-             */
-            type: "USER" | "SYSTEM_AUTOMATION";
-        };
-        /** TimelineData */
-        TimelineData: {
-            actor: components["schemas"]["TimelineActor"];
-            /** Event Type */
-            event_type: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Occurred At
-             * Format: date-time
-             */
-            occurred_at: string;
-            /** Payload */
-            payload: {
-                [key: string]: unknown;
-            };
-        };
-        /** TimelinePage */
-        TimelinePage: {
-            /** Data */
-            data: components["schemas"]["TimelineData"][];
-            page: components["schemas"]["PageData"];
         };
         /** UserCreate */
         UserCreate: {
@@ -852,6 +1378,78 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** TimelineActor */
+        app__modules__clients__schemas__TimelineActor: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "USER" | "SYSTEM_AUTOMATION";
+        };
+        /** TimelineData */
+        app__modules__clients__schemas__TimelineData: {
+            actor: components["schemas"]["app__modules__clients__schemas__TimelineActor"];
+            /** Event Type */
+            event_type: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+        };
+        /** TimelinePage */
+        app__modules__clients__schemas__TimelinePage: {
+            /** Data */
+            data: components["schemas"]["app__modules__clients__schemas__TimelineData"][];
+            page: components["schemas"]["PageData"];
+        };
+        /** TimelineActor */
+        app__modules__quotes__schemas__TimelineActor: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "USER" | "CUSTOMER_QUOTE_LINK" | "SYSTEM_AUTOMATION";
+        };
+        /** TimelineData */
+        app__modules__quotes__schemas__TimelineData: {
+            actor: components["schemas"]["app__modules__quotes__schemas__TimelineActor"];
+            /** Event Type */
+            event_type: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+        };
+        /** TimelinePage */
+        app__modules__quotes__schemas__TimelinePage: {
+            /** Data */
+            data: components["schemas"]["app__modules__quotes__schemas__TimelineData"][];
+            page: components["schemas"]["PageData"];
         };
     };
     responses: never;
@@ -1547,7 +2145,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TimelinePage"];
+                    "application/json": components["schemas"]["app__modules__clients__schemas__TimelinePage"];
                 };
             };
             /** @description Validation Error */
@@ -1615,6 +2213,542 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_public_quote_api_v1_public_quote_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicQuoteResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    /** @description Segundos até nova tentativa */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approve_public_quote_api_v1_public_quote_approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicApprovalResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    /** @description Segundos até nova tentativa */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    public_quote_logo_api_v1_public_quote_logo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Successful Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    /** @description Segundos até nova tentativa */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    quotes_api_v1_quotes_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                status?: ("DRAFT" | "SENT" | "APPROVED" | "CANCELLED") | null;
+                client_id?: string | null;
+                is_expired?: boolean | null;
+                q?: string | null;
+                sort?: "number" | "-number" | "created_at" | "-created_at" | "valid_until" | "-valid_until";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_quote_api_v1_quotes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quote_api_v1_quotes__quote_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    /** @description Versão forte do orçamento */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_quote_api_v1_quotes__quote_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuotePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    /** @description Versão forte do orçamento */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_v1_quotes__quote_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    /** @description Versão forte do orçamento */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duplicate_api_v1_quotes__quote_id__duplicate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmptyInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quote_logo_api_v1_quotes__quote_id__logo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rotate_public_access_api_v1_quotes__quote_id__public_access_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RotateInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicAccessIssuedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_public_access_api_v1_quotes__quote_id__public_access__access_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                quote_id: string;
+                access_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmptyInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicAccessResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_quote_api_v1_quotes__quote_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                "X-CSRF-Token"?: string | null;
+            };
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmptyInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteIssuedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quote_timeline_api_v1_quotes__quote_id__timeline_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__modules__quotes__schemas__TimelinePage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
