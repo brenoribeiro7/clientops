@@ -43,6 +43,17 @@ def test_openapi_generation_is_deterministic_and_cl03_scoped() -> None:
     assert b"ServiceOrder" not in first
     assert all("delete" not in operations for operations in schema["paths"].values())
 
+    components = schema["components"]["schemas"]
+    for patch_name in ("ClientPatch", "EquipmentPatch"):
+        patch_schema = components[patch_name]
+        name_schema = patch_schema["properties"]["name"]
+        assert name_schema["type"] == "string"
+        assert "anyOf" not in name_schema
+        assert "name" not in patch_schema.get("required", [])
+
+    phone_schema = components["ClientPatch"]["properties"]["phone"]
+    assert {variant.get("type") for variant in phone_schema["anyOf"]} == {"string", "null"}
+
 
 def test_openapi_check_rejects_a_stale_copy(tmp_path: Path) -> None:
     stale = tmp_path / "openapi.json"

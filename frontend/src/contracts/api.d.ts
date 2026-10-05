@@ -507,7 +507,7 @@ export interface components {
             /** Email */
             email?: string | null;
             /** Name */
-            name?: string | null;
+            name?: string;
             /** Notes */
             notes?: string | null;
             /** Phone */
@@ -624,7 +624,7 @@ export interface components {
             /** Model */
             model?: string | null;
             /** Name */
-            name?: string | null;
+            name?: string;
             /** Notes */
             notes?: string | null;
             /** Serial Number */

@@ -4,10 +4,16 @@ from datetime import UTC, datetime
 from typing import cast
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
-from app.modules.clients.schemas import ClientCreate, ClientPatch, EquipmentCreate, ListQuery
+from app.modules.clients.schemas import (
+    ClientCreate,
+    ClientPatch,
+    EquipmentCreate,
+    EquipmentPatch,
+    ListQuery,
+)
 from app.modules.timeline.service import append_event
 
 
@@ -38,6 +44,29 @@ def test_optional_text_rejects_controls_and_allows_multiline_notes() -> None:
         EquipmentCreate(name="Ar", serial_number="ABC\n123")
     with pytest.raises(ValidationError):
         ClientPatch(notes="segredo\x07")
+
+
+@pytest.mark.parametrize(
+    ("patch_type", "nullable_field"),
+    ((ClientPatch, "phone"), (EquipmentPatch, "brand")),
+)
+def test_patch_name_is_omissible_but_not_nullable(
+    patch_type: type[BaseModel], nullable_field: str
+) -> None:
+    omitted = patch_type.model_validate({})
+    assert omitted.model_dump(exclude_unset=True) == {}
+
+    named = patch_type.model_validate({"name": "  Nome  "})
+    assert named.model_dump(exclude_unset=True) == {"name": "Nome"}
+
+    for invalid_name in (None, "   "):
+        with pytest.raises(ValidationError):
+            patch_type.model_validate({"name": invalid_name})
+
+    nullable_omitted = patch_type.model_validate({})
+    assert nullable_field not in nullable_omitted.model_dump(exclude_unset=True)
+    nullable_cleared = patch_type.model_validate({nullable_field: None})
+    assert nullable_cleared.model_dump(exclude_unset=True)[nullable_field] is None
 
 
 def test_input_allowlists_reject_server_and_ownership_fields() -> None:

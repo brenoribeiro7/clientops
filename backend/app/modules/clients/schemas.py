@@ -5,6 +5,7 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.json_schema import SkipJsonSchema
 
 Status = Literal["ACTIVE", "ARCHIVED"]
 Sort = Literal["name", "-name", "created_at", "-created_at"]
@@ -61,7 +62,7 @@ class ClientCreate(ClientFields):
 class ClientPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: str | None = Field(default=None, max_length=160)
+    name: str | SkipJsonSchema[None] = Field(default=None, max_length=160)
     phone: str | None = Field(default=None, max_length=32)
     email: str | None = Field(default=None, max_length=254)
     address: str | None = Field(default=None, max_length=500)
@@ -118,7 +119,7 @@ class EquipmentCreate(EquipmentFields):
 class EquipmentPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: str | None = Field(default=None, max_length=160)
+    name: str | SkipJsonSchema[None] = Field(default=None, max_length=160)
     brand: str | None = Field(default=None, max_length=120)
     model: str | None = Field(default=None, max_length=120)
     serial_number: str | None = Field(default=None, max_length=100)

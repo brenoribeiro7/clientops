@@ -275,6 +275,78 @@ def test_client_crud_search_pagination_archive_restore_and_timeline(
 
 
 @pytest.mark.postgres
+def test_patch_name_presence_and_nullable_field_http_contract(
+    clients_api: ClientHarness,
+) -> None:
+    client, client_etag = clients_api.add_client("Cliente PATCH", phone="+55 71 3000-0303")
+    client_path = f"/api/v1/clients/{client['id']}"
+    timeline_path = f"{client_path}/timeline?page_size=100"
+    timeline_count = len(clients_api.client.get(timeline_path).json()["data"])
+
+    client_no_op = clients_api.client.patch(
+        client_path,
+        json={},
+        headers={**clients_api.headers, "If-Match": client_etag},
+    )
+    assert client_no_op.status_code == 200
+    assert client_no_op.headers["etag"] == client_etag
+    assert client_no_op.json()["data"]["version"] == client["version"]
+    assert client_no_op.json()["data"]["updated_at"] == client["updated_at"]
+    assert len(clients_api.client.get(timeline_path).json()["data"]) == timeline_count
+
+    client_null_name = clients_api.client.patch(
+        client_path,
+        json={"name": None},
+        headers={**clients_api.headers, "If-Match": client_etag},
+    )
+    assert client_null_name.status_code == 422
+    assert client_null_name.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert clients_api.client.get(client_path).json()["data"] == client
+
+    client_clear = clients_api.client.patch(
+        client_path,
+        json={"phone": None},
+        headers={**clients_api.headers, "If-Match": client_etag},
+    )
+    assert client_clear.status_code == 200
+    assert client_clear.json()["data"]["phone"] is None
+
+    equipment, equipment_etag = clients_api.add_equipment(
+        client["id"], "Equipamento PATCH", brand="Marca"
+    )
+    equipment_path = f"{client_path}/equipment/{equipment['id']}"
+    equipment_timeline_count = len(clients_api.client.get(timeline_path).json()["data"])
+
+    equipment_no_op = clients_api.client.patch(
+        equipment_path,
+        json={},
+        headers={**clients_api.headers, "If-Match": equipment_etag},
+    )
+    assert equipment_no_op.status_code == 200
+    assert equipment_no_op.headers["etag"] == equipment_etag
+    assert equipment_no_op.json()["data"]["version"] == equipment["version"]
+    assert equipment_no_op.json()["data"]["updated_at"] == equipment["updated_at"]
+    assert len(clients_api.client.get(timeline_path).json()["data"]) == equipment_timeline_count
+
+    equipment_null_name = clients_api.client.patch(
+        equipment_path,
+        json={"name": None},
+        headers={**clients_api.headers, "If-Match": equipment_etag},
+    )
+    assert equipment_null_name.status_code == 422
+    assert equipment_null_name.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert clients_api.client.get(equipment_path).json()["data"] == equipment
+
+    equipment_clear = clients_api.client.patch(
+        equipment_path,
+        json={"brand": None},
+        headers={**clients_api.headers, "If-Match": equipment_etag},
+    )
+    assert equipment_clear.status_code == 200
+    assert equipment_clear.json()["data"]["brand"] is None
+
+
+@pytest.mark.postgres
 def test_equipment_ownership_archive_no_cascade_and_archived_parent_rule(
     clients_api: ClientHarness,
 ) -> None:
