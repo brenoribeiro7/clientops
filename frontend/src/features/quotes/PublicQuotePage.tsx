@@ -87,7 +87,13 @@ export default function PublicQuotePage({ client }: Props) {
 
       <section className="detail-section" aria-labelledby="quote-items-heading">
         <h2 id="quote-items-heading">Itens</h2>
-        <div className="quote-table-wrap">
+        {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- keyboard access for the horizontally scrollable table */}
+        <div
+          className="quote-table-wrap"
+          role="region"
+          tabIndex={0}
+          aria-label="Itens do orçamento"
+        >
           <table className="quote-table">
             <thead>
               <tr>
@@ -115,6 +121,7 @@ export default function PublicQuotePage({ client }: Props) {
             </tfoot>
           </table>
         </div>
+        {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
       </section>
 
       <section className="detail-section" aria-labelledby="quote-details-heading">

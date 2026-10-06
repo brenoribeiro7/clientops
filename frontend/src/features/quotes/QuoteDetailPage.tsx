@@ -255,7 +255,13 @@ export default function QuoteDetailPage() {
                 <dd>{quote.notes ?? "Sem observações"}</dd>
               </div>
             </dl>
-            <div className="quote-table-wrap">
+            {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- keyboard access for the horizontally scrollable table */}
+            <div
+              className="quote-table-wrap"
+              role="region"
+              tabIndex={0}
+              aria-label="Itens do orçamento"
+            >
               <table className="quote-table">
                 <thead>
                   <tr>
@@ -277,6 +283,7 @@ export default function QuoteDetailPage() {
                 </tbody>
               </table>
             </div>
+            {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
           </section>
 
           {editable && (

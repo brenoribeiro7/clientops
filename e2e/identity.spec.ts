@@ -30,7 +30,7 @@ test("árvore pública /q não consulta sessão privada", async ({ page }) => {
   });
   await page.goto("/q");
   await expect(
-    page.getByRole("heading", { name: "Fundação da experiência pública" }),
+    page.getByRole("heading", { name: "Orçamento indisponível" }),
   ).toBeVisible();
   expect(sessionRequests).toEqual([]);
 });
