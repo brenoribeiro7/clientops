@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from threading import Barrier, Event
+from typing import Any, cast
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
@@ -70,7 +71,7 @@ class QuoteHarness:
     def headers(self) -> dict[str, str]:
         return {"Origin": ORIGIN, "X-CSRF-Token": self.csrf}
 
-    def create_quote(self, **changes: object) -> tuple[dict[str, object], str]:
+    def create_quote(self, **changes: object) -> tuple[dict[str, Any], str]:
         payload: dict[str, object] = {
             "client_id": str(self.client_id),
             "valid_until": "2026-10-09",
@@ -89,7 +90,7 @@ class QuoteHarness:
         assert response.status_code == 201, response.text
         return response.json()["data"], response.headers["etag"]
 
-    def send_quote(self, quote_id: object, etag: str) -> tuple[dict[str, object], str]:
+    def send_quote(self, quote_id: object, etag: str) -> tuple[dict[str, Any], str]:
         response = self.client.post(
             f"/api/v1/quotes/{quote_id}/send",
             json={},
@@ -97,6 +98,10 @@ class QuoteHarness:
         )
         assert response.status_code == 200, response.text
         return response.json(), response.headers["etag"]
+
+    @property
+    def settings(self) -> ApiSettings:
+        return cast(ApiSettings, cast(Any, self.client.app).state.settings)
 
     def relogin(self) -> None:
         response = self.client.post(
@@ -796,7 +801,7 @@ def test_quote_draft_send_and_duplicate_races(quotes_api: QuoteHarness) -> None:
                 if_match=send_etag,
                 actor_user_id=quotes_api.actor_id,
                 now=quotes_api.clock.current,
-                settings=quotes_api.client.app.state.settings,
+                settings=quotes_api.settings,
             )
 
     assert sorted(_race(send, send)) == ["OK", "VERSION_CONFLICT"]
@@ -893,7 +898,7 @@ def test_public_approval_and_access_races(quotes_api: QuoteHarness) -> None:
                 expected_access_id=expected,
                 actor_user_id=quotes_api.actor_id,
                 now=quotes_api.clock.current,
-                settings=quotes_api.client.app.state.settings,
+                settings=quotes_api.settings,
             )
 
     assert _race(lambda: approve(digest), lambda: rotate(quote_id, access_id)).count("OK") == 1
@@ -975,7 +980,7 @@ def test_send_serializes_with_client_archive_and_profile_update(
                 if_match=etag,
                 actor_user_id=quotes_api.actor_id,
                 now=quotes_api.clock.current,
-                settings=quotes_api.client.app.state.settings,
+                settings=quotes_api.settings,
             )
 
     def archive() -> None:
@@ -1017,7 +1022,7 @@ def test_send_serializes_with_client_archive_and_profile_update(
                 if_match=etag,
                 actor_user_id=quotes_api.actor_id,
                 now=quotes_api.clock.current,
-                settings=quotes_api.client.app.state.settings,
+                settings=quotes_api.settings,
             )
 
     def update_business() -> None:
@@ -1038,7 +1043,7 @@ def test_send_serializes_with_client_archive_and_profile_update(
     with quotes_api.factory() as session:
         quote = session.get(Quote, quote_id)
         assert quote is not None and quote.commercial_snapshot is not None
-        snapshot = quote.commercial_snapshot
+        snapshot = cast(dict[str, Any], quote.commercial_snapshot)
         pair = (
             snapshot["business"]["trade_name"],
             snapshot["quote"]["business_timezone"],
@@ -1130,7 +1135,7 @@ def test_timezone_change_serializes_before_public_decision(
                         expected_access_id=access_id,
                         actor_user_id=quotes_api.actor_id,
                         now=race_now,
-                        settings=quotes_api.client.app.state.settings,
+                        settings=quotes_api.settings,
                     )
             except FoundationError as error:
                 return error.code
@@ -1154,7 +1159,8 @@ def test_timezone_change_serializes_before_public_decision(
         saved = session.get(Quote, quote_id)
         assert saved is not None and saved.status == "SENT"
         assert saved.commercial_snapshot is not None
-        assert saved.commercial_snapshot["quote"]["business_timezone"] == "America/Bahia"
+        snapshot = cast(dict[str, Any], saved.commercial_snapshot)
+        assert snapshot["quote"]["business_timezone"] == "America/Bahia"
         assert (
             session.scalar(
                 select(func.count())
