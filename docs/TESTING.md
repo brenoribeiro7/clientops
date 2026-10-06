@@ -1,6 +1,6 @@
 # ClientOps — testes e CI
 
-Gates orientados a riscos: autorização, histórico, valores e transições corretas; porcentagem de coverage não substitui esses critérios. **Nenhum teste do produto foi executado em CL-00:** esse registro continua histórico. As seções de evidência registram CL-01 e o subconjunto de identidade/configuração CL-02; os domínios comerciais posteriores continuam futuros.
+Gates orientados a riscos: autorização, histórico, valores e transições corretas; porcentagem de coverage não substitui esses critérios. **Nenhum teste do produto foi executado em CL-00:** esse registro continua histórico. As seções de evidência registram CL-01 a CL-04; os domínios comerciais de OS, agenda, execução, relatórios e cobrança continuam futuros.
 
 ## Camadas
 
@@ -255,3 +255,22 @@ Vitest cobre lista/detalhe/papel e preservação do formulário no 412. O spec `
 | CON-01 | PASS — CL-03 APPLICABLE SUBSET: versões, locks raiz, races Client/Equipment e timeline atômica | Quote/OS/Charge CL-04..06 |
 
 O workflow possui exatamente 14 jobs e `cl03-gate` exige sucesso explícito dos 13 jobs anteriores. Run e SHA finais são evidência externa do relatório de execução, sem criar referência auto-referente nestes documentos.
+
+## Evidência local CL-04 — 06/10/2026
+
+Os gates backend passaram com 88 testes sem PostgreSQL, 67 testes PostgreSQL reais e 2 skips condicionais de migração, além de 12 testes Compose/artefatos. As 39 provas específicas de Quote se dividem em 25 testes de domínio/API e 14 testes PostgreSQL. O upgrade foi exercitado de 0002→0003→0004, o banco vazio chegou a `0004_quotes` e `alembic check` não encontrou drift. Ruff, format, mypy em 76 arquivos, lock uv e export OpenAPI passaram.
+
+O frontend passou ESLint, Prettier, TypeScript, build, `openapi-typescript --check` e 18 testes Vitest. A regressão HTTP executou 132 casos Playwright em Chromium 390/768/1024/1440, Firefox 1440 e WebKit 390: 124 pass e 8 skips deliberados — 5 da prova de segurança compartilhada executada em Chromium 390 e 3 do Drawer substituído pela navegação desktop. O spec `@cl04` passou novamente nos seis projetos contra o stack production-like HTTPS, totalizando 6 pass adicionais. Os fluxos usam Nginx, API, PostgreSQL, cookie, CSRF, locks e bearers reais; cada projeto recebe reset CLI isolado para não enfraquecer os limites por IP.
+
+| Família | Evidência CL-04 | Resultado |
+|---|---|---|
+| DOM-01/05/06 | transições, imutabilidade após envio, Decimal estrito e arredondamento por linha, validade civil e expiração derivada | PASS |
+| PUB-01..09 | leitura/aprovação pública, erros uniformes, TTL/revogação/rotação, repeat estável, corridas, fragmento limpo e DTO mínimo | PASS |
+| HIS-01 | snapshots de Business/Client/itens/timezone permanecem históricos após alterações cadastrais | PASS |
+| CON-01/07 | ETag/412 preserva formulário; locks, retry e concorrências não duplicam evento ou acesso ativo | PASS |
+| SEC-01/03/04/05 | Origin/CSRF, rate limits por instalação/IP/bearer, CSP/HSTS/no-store e scans de vazamento | PASS |
+| UI-01/02/03 | estados Admin/público, confirmação, foco/reflow/axe e concorrência com recarga explícita | PASS |
+
+O teste público mantém o bearer apenas no closure criado antes do primeiro render, substitui imediatamente `/q#token=…` por `/q`, usa `credentials: omit` e prova storage/IndexedDB/referrer/console/HTML sem segredo. Screenshots, trace e vídeo ficam desligados no spec CL-04. A auditoria do estado final encontrou zero fragmentos, headers Authorization ou canários PII nos logs da API/Nginx; zero PII ou chaves de segredo nos payloads da timeline; todos os cinco acessos persistidos tinham somente hash SHA-256 de 32 bytes. Não há escrita em local/session storage, uso de IndexedDB ou Web Share no código de Quote.
+
+O workflow passa a ter exatamente 17 jobs. `quotes-integration` cobre PostgreSQL real, `quotes-e2e` cobre os seis projetos HTTP e Chromium 390 HTTPS, e `cl04-gate` usa `if: always()` com dependência explícita e resultado `success` para os 16 jobs anteriores. Run e SHA finais permanecem na evidência externa da execução para evitar referência auto-referente.
