@@ -44,7 +44,7 @@ def test_upgrade_from_cl02_preserves_timeline_and_accepts_cl03_events() -> None:
                     "'SYSTEM_AUTOMATION',NULL,NULL,1,'{}',CURRENT_TIMESTAMP)"
                 )
             )
-        subprocess.run(["alembic", "upgrade", "head"], check=True, timeout=30)
+        subprocess.run(["alembic", "upgrade", "0003_clients_equipment"], check=True, timeout=30)
         with engine.begin() as connection:
             assert connection.execute(
                 text("SELECT version_num FROM alembic_version")

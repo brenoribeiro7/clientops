@@ -22,6 +22,7 @@ CL02_JOBS = REQUIRED_JOBS | {
     "identity-e2e",
 }
 CL03_JOBS = CL02_JOBS | {"cl02-gate", "clients-integration", "clients-e2e"}
+CL04_JOBS = CL03_JOBS | {"cl03-gate", "quotes-integration", "quotes-e2e"}
 
 
 @pytest.mark.artifacts
@@ -77,7 +78,8 @@ def test_cl02_gate_inspects_every_required_result_and_rejects_non_success() -> N
 def test_cl03_jobs_preserve_browser_matrix_and_gate_every_prior_result() -> None:
     content = WORKFLOW.read_text(encoding="utf-8")
     jobs = content.split("jobs:\n", maxsplit=1)[1]
-    assert len(re.findall(r"^  [a-z0-9-]+:\n", jobs, re.MULTILINE)) == 14
+    job_names = set(re.findall(r"^  ([a-z0-9-]+):\n", jobs, re.MULTILINE))
+    assert CL03_JOBS | {"cl03-gate"} <= job_names
     migration = content.split("  database-migration:\n", maxsplit=1)[1].split(
         "  contract-drift:\n", maxsplit=1
     )[0]
@@ -86,7 +88,7 @@ def test_cl03_jobs_preserve_browser_matrix_and_gate_every_prior_result() -> None
     security = content.split("  security-foundation:\n", maxsplit=1)[1].split(
         "  cl01-gate:\n", maxsplit=1
     )[0]
-    assert "--grep-invert @cl03" in security
+    assert '--grep-invert "@cl0[34]"' in security
     clients_e2e = content.split("  clients-e2e:\n", maxsplit=1)[1].split(
         "  cl03-gate:\n", maxsplit=1
     )[0]
@@ -94,6 +96,28 @@ def test_cl03_jobs_preserve_browser_matrix_and_gate_every_prior_result() -> None
     gate = content.split("  cl03-gate:\n", maxsplit=1)[1]
     assert "if: ${{ always() }}" in gate
     for job in CL03_JOBS:
+        assert f"- {job}" in gate
+        assert f"${{{{ needs.{job}.result }}}}" in gate
+    assert 'test "$result" = success' in gate
+
+
+@pytest.mark.artifacts
+def test_cl04_jobs_preserve_all_prior_jobs_and_gate_every_result() -> None:
+    content = WORKFLOW.read_text(encoding="utf-8")
+    jobs = content.split("jobs:\n", maxsplit=1)[1]
+    assert len(re.findall(r"^  [a-z0-9-]+:\n", jobs, re.MULTILINE)) == 17
+    migration = content.split("  database-migration:\n", maxsplit=1)[1].split(
+        "  contract-drift:\n", maxsplit=1
+    )[0]
+    assert "CL04_UPGRADE_TEST=1" in migration
+    quotes_e2e = content.split("  quotes-e2e:\n", maxsplit=1)[1].split(
+        "  cl04-gate:\n", maxsplit=1
+    )[0]
+    assert "--grep @cl04" in quotes_e2e
+    assert "CLIENTOPS_E2E_BASE_URL=https://web:8443" in quotes_e2e
+    gate = content.split("  cl04-gate:\n", maxsplit=1)[1]
+    assert "if: ${{ always() }}" in gate
+    for job in CL04_JOBS:
         assert f"- {job}" in gate
         assert f"${{{{ needs.{job}.result }}}}" in gate
     assert 'test "$result" = success' in gate
