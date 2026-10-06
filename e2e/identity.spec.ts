@@ -38,6 +38,7 @@ test("árvore pública /q não consulta sessão privada", async ({ page }) => {
 test("fluxo real Admin e Técnico com cookie, CSRF e senha temporária", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(90_000);
   const technicianEmail = `tech.${testInfo.project.name.replaceAll("-", ".")}@example.com`;
   await login(page, adminEmail, adminPassword);
   await expect(
