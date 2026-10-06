@@ -211,6 +211,7 @@ test("@cl03 fluxo real de Clients, Equipment, timeline e autorização", async (
   );
   expect(forbidden).toEqual([403, 403, 403, 403, 403]);
   await page.goto(`/admin/clients/${clientAId}`);
+  await page.waitForURL(/\/tech\/today$/);
   await expect(page.getByRole("heading", { name: "Hoje" })).toBeVisible();
   await expect(page.getByText(updatedName)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Clientes" })).toHaveCount(0);

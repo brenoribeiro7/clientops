@@ -129,13 +129,14 @@ test("@cl04 fluxo Admin, aprovação pública, snapshot e ciclo de acesso", asyn
   const validUntil = dateInZone("America/Bahia", 1);
 
   await login(page);
-  await configureBusiness(page, originalBusiness);
+  await configureBusiness(page, originalBusiness, "Etc/GMT+12");
   const client = await createClient(page, originalClient);
   const expiring = await createAndSend(
     page,
     client.id,
-    dateInZone("America/Bahia", 0),
+    dateInZone("Etc/GMT+12", 0),
   );
+  await configureBusiness(page, originalBusiness, "America/Bahia");
 
   await page.goto("/admin/quotes");
   await expect(
@@ -358,6 +359,13 @@ test("@cl04 fluxo Admin, aprovação pública, snapshot e ciclo de acesso", asyn
     baseURL: origin,
     ignoreHTTPSErrors: true,
   });
+  const expiredBearer = bearerFrom(expiring.sent.public_access.share_url);
+  const expiredProjection = await expiredContext.request.get(
+    "/api/v1/public/quote",
+    { headers: { Authorization: `Bearer ${expiredBearer}` } },
+  );
+  expect(expiredProjection.status()).toBe(200);
+  expect((await expiredProjection.json()).data.is_expired).toBe(true);
   const expiredPage = await expiredContext.newPage();
   await expiredPage.goto(expiring.sent.public_access.share_url);
   await expect(expiredPage.getByText("Este orçamento venceu.")).toBeVisible();
@@ -369,7 +377,7 @@ test("@cl04 fluxo Admin, aprovação pública, snapshot e ciclo de acesso", asyn
     {
       data: { accept: true },
       headers: {
-        Authorization: `Bearer ${bearerFrom(expiring.sent.public_access.share_url)}`,
+        Authorization: `Bearer ${expiredBearer}`,
         Origin: origin,
       },
     },

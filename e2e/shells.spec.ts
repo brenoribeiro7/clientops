@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const pages = [
   ["/admin", "Entrar no ClientOps"],
   ["/tech/today", "Entrar no ClientOps"],
-  ["/q", "Fundação da experiência pública"],
+  ["/q", "Orçamento indisponível"],
   ["/login", "Entrar no ClientOps"],
 ] as const;
 
