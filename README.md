@@ -1,6 +1,6 @@
 # ClientOps
 
-ClientOps com a Foundation CL-01, identidade e segurança CL-02 e cadastro de clientes e equipamentos CL-03. O repositório contém API FastAPI, aplicação React, PostgreSQL, migrations Alembic, proxy Nginx, composição Docker e testes locais/CI.
+ClientOps com a Foundation CL-01, identidade e segurança CL-02, clientes e equipamentos CL-03 e orçamentos com aprovação pública segura CL-04. O repositório contém API FastAPI, aplicação React, PostgreSQL, migrations Alembic, proxy Nginx, composição Docker e testes locais/CI.
 
 ## Toolchain fixada
 
@@ -71,8 +71,8 @@ npm run test:unit
 npm run build
 ```
 
-Os testes PostgreSQL e Compose usam `.local/compose.env` e as imagens fixadas. O workflow `.github/workflows/ci.yml` preserva os gates CL-01/02 e acrescenta `clients-integration`, `clients-e2e` e `cl03-gate`, totalizando 14 jobs. A execução local valida o arquivo do workflow, mas somente um run do GitHub Actions no SHA publicado constitui evidência de CI real.
+Os testes PostgreSQL e Compose usam `.local/compose.env` e as imagens fixadas. O workflow `.github/workflows/ci.yml` preserva os gates CL-01/02/03 e acrescenta `quotes-integration`, `quotes-e2e` e `cl04-gate`, totalizando 17 jobs. A execução local valida o arquivo do workflow, mas somente um run do GitHub Actions no SHA publicado constitui evidência de CI real.
 
 ## Limites atuais
 
-CL-03 acrescenta somente `clients`, `equipment` e o contexto opcional `timeline_events.client_id`. O FileStorage operacional, uploads, logo, relatórios e scheduler entram em CL-05; Quote começa em CL-04. Não há Redis, JWT, autenticação externa nem infraestrutura paga obrigatória.
+CL-04 acrescenta somente `quote_number_seq`, `quotes`, `quote_items`, `quote_public_access` e os contextos Quote/PublicAccess na timeline. O FileStorage operacional, uploads, logo persistido, ordens de serviço, relatórios e scheduler entram em CL-05. Não há Redis, JWT, autenticação externa nem infraestrutura paga obrigatória.

@@ -192,3 +192,11 @@ A migration `0003_clients_equipment` acrescenta `clients`, `equipment` e `timeli
 O módulo `clients` separa schemas, repository, service e router. Operações de filho bloqueiam Client antes de Equipment; criação de Equipment e archive do Client compartilham a mesma raiz para serialização. Mudança de domínio e evento usam a mesma Session/commit. Listas aplicam filtro e contagem no PostgreSQL, busca ILIKE escapada e ordenação determinística.
 
 No frontend, `/admin/clients` e `/admin/clients/:clientId` são chunks lazy dentro da infraestrutura privada existente. TanStack Query mantém chaves separadas para lista, detalhe, equipamentos e timeline; mutations invalidam somente contextos relacionados. `/q` e o shell Técnico continuam isolados. Nenhuma dependência, serviço pago, worker ou entidade CL-04+ foi adicionada.
+
+## Implementação CL-04
+
+A migration `0004_quotes` acrescenta somente a sequence de numeração, Quote, QuoteItem e QuotePublicAccess, além dos contextos de orçamento e ator público na timeline. O domínio usa Decimal estrito e snapshots validados por estrutura exata. O serviço ordena locks BusinessProfile→Client→Quote conforme a operação, relê o acesso após bloquear a raiz e repete apenas transações comerciais em falhas PostgreSQL elegíveis; rate limits e emissão do bearer ficam fora desse retry.
+
+As APIs privadas são Admin-only com cookie, Origin/CSRF e ETag nos comandos versionados. As APIs públicas usam exclusivamente bearer e `credentials: omit`, aplicam buckets independentes e projetam Client somente como `{name}`. O fragmento `/q#token=...` é validado e removido antes de `createRoot`; o cliente público fechado sobre o segredo é injetado diretamente na rota pública, sem AuthProvider, QueryClient, storage ou URL persistente.
+
+O frontend implementa lista, criação e detalhe em `/admin/quotes`, edição DRAFT, envio confirmado, cancelamento, duplicação, rotação/revogação e timeline. O link emitido existe apenas no estado transitório do diálogo; o WhatsApp recebe mensagem genérica sem o link. `/q` lê o snapshot, confirma a aprovação e mantém estados uniformes de acesso inválido, vencido e aprovado. Nenhuma entidade, worker, upload ou persistência CL-05 foi antecipada.

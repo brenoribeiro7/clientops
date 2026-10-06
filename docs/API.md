@@ -246,10 +246,14 @@ Timeline entry: id,event_type,occurred_at,actor {type,display_name},payload allo
 
 Bearer/temporária só nos corpos de emissão, que são no-store e excluídos de logs/traces. Exemplos usam apenas IDs e dados fictícios. Nenhum endpoint envia mensagens externas.
 
-## Implementação atual CL-03
+## Implementação atual CL-04
 
 A API materializada acrescenta `GET/POST /clients`, `GET/PATCH /clients/{client_id}`, ações `archive`/`restore`, equipamento aninhado em `/clients/{client_id}/equipment` e `GET /clients/{client_id}/timeline`. Não existe endpoint top-level de Equipment nem DELETE. Todas as rotas são Admin-only; mutations exigem Origin/CSRF e alterações existentes exigem `If-Match` forte.
 
 Listas aceitam `page` 1+, `page_size` 1..100, `status` ACTIVE/ARCHIVED, `q` de 2..100 caracteres e `sort` name/-name/created_at/-created_at. Parâmetros desconhecidos retornam 422. Busca é case-insensitive somente em `name`, com curingas tratados literalmente e desempate por `id`. Archive/restore repetido com ETag atual retorna 200 sem alterar versão, `updated_at` ou timeline; ETag obsoleto retorna 412. Criar equipamento sob cliente arquivado retorna 409 `CLIENT_ARCHIVED`.
 
-`Client.email` é texto de contato, sem semântica de identidade. Payloads rejeitam campos de servidor e `client_id` de Equipment. O OpenAPI publicado contém apenas health, CL-02 e CL-03; Quote, ServiceOrder e demais módulos futuros continuam ausentes.
+`Client.email` é texto de contato, sem semântica de identidade. Payloads rejeitam campos de servidor e `client_id` de Equipment.
+
+A API materializada também implementa a tabela de rotas Quote e Public Quote descrita acima: CRUD do rascunho, send/cancel/duplicate, rotate/revoke, logo 404 até CL-05 e timeline. Respostas de recurso incluem ETag/no-store; PATCH diferencia campo omitido de `notes:null`, enquanto `client_id`, `valid_until` e `items` não aceitam null. Valores Decimal permanecem strings no OpenAPI e em `api.d.ts`.
+
+Rotas privadas declaram somente `cookieAuth`; as três rotas públicas declaram somente `bearerAuth`, 429 documenta `Retry-After`, e o DTO `PublicClient` possui exatamente a propriedade `name`. O OpenAPI publicado contém apenas health e CL-02..04; ServiceOrder e módulos posteriores continuam ausentes.

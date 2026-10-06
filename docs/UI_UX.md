@@ -232,3 +232,11 @@ As rotas `/login`, `/change-password`, `/admin/account`, `/admin/settings`, `/ad
 O Admin acessa `/admin/clients` pela navegação privada, filtra por status, pesquisa e ordena, e abre `/admin/clients/:clientId` para dados, equipamentos e histórico. Cadastro e edição usam labels explícitos, estados de loading/erro/vazio e ações de archive/restore em diálogo. Equipamentos existem somente dentro do detalhe do cliente; cliente arquivado mantém seus equipamentos visíveis e desabilita a inclusão com explicação associada.
 
 Conflito 412 preserva os valores locais, apresenta mensagem e oferece “Recarregar versão atual”; não há merge, overwrite ou retry automático. O Técnico não recebe item Clientes e um deep link Admin retorna ao shell técnico sem renderizar dados. Cards, filtros, diálogos e botões refluem sem overflow nas larguras 390, 768, 1024 e 1440; axe cobre as telas principais no E2E CL-03.
+
+## Orçamentos e aprovação pública CL-04
+
+O Admin acessa `/admin/quotes`, cria rascunhos em `/admin/quotes/new` e usa `/admin/quotes/:quoteId` para editar campos e itens, enviar após confirmação, cancelar, duplicar, rotacionar/revogar o acesso e consultar a timeline. Quantidade e preço permanecem strings; totais exibidos vêm do servidor. Um 412 preserva a edição até a recarga explícita. Após SENT, a proposta comercial fica somente para leitura.
+
+Send e rotate abrem um diálogo transitório com copiar, seleção manual e WhatsApp genérico sem segredo. Fechar remove o link da árvore. Não há Web Share. A navegação Quote existe apenas no shell Admin.
+
+`/q` permanece sem menus ou conta. O fragmento é removido antes do mount; a tela mostra business, nome do cliente, itens, totais, validade, notas e status a partir do snapshot. SENT válido exige confirmação textual antes de aprovar; vencido orienta contato; APPROVED mostra o instante fixado; acesso inválido usa mensagem uniforme. A tabela rolável recebe foco de teclado e a página não causa overflow no viewport móvel.

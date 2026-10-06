@@ -218,3 +218,9 @@ Os gates locais de unidade, PostgreSQL, Compose, frontend, HTTP multi-browser e 
 A feature `feat/cl-03-clients-equipment` implementa migration 0003, Client/Equipment, ownership aninhado, archive/restore versionado, timeline do cliente, OpenAPI/TS e telas Admin responsivas. Os jobs `clients-integration`, `clients-e2e` e `cl03-gate` elevam o workflow para 14 jobs e preservam os gates CL-01/02.
 
 DOM-09 é `PASS — CL-03 APPLICABLE SUBSET`: archive/restore, histórico, ausência de cascade, ownership e rejeição de novo Equipment sob Client arquivado foram materializados. Quote selection/send e snapshot permanecem CL-04; execução e snapshot de OS permanecem CL-05. A fase aguarda Implementation Audit e não é declarada CLOSED neste documento.
+
+## Execução CL-04 — checkpoint de implementação
+
+A feature `feat/cl-04-quotes-public-approval` implementa migration 0004, Decimal/snapshot, máquina de Quote, lifecycle do acesso público, aprovação segura, timeline, OpenAPI/TS e as jornadas Admin e `/q`. Os locks de data civil seguem BusinessProfile→Client/Quote e os testes PostgreSQL coordenam as corridas comerciais, inclusive mudança de timezone e retry sem repetir rate limit/touch de sessão.
+
+Os jobs `quotes-integration`, `quotes-e2e` e `cl04-gate` elevam o workflow para 17 jobs e preservam integralmente CL-01/02/03. O gate remoto pertence ao SHA publicado e será registrado no relatório de execução. ServiceOrder, Evidence, Report, Charge, Alert, scheduler, PDF e upload/logo persistido permanecem CL-05+; a fase não é declarada CLOSED neste documento.

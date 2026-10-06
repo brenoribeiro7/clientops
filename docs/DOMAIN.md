@@ -266,10 +266,10 @@ USER aponta usuário real; CUSTOMER_QUOTE_LINK aponta registro de acesso, sem af
 
 Login/logout/falhas de autenticação ficam em log de segurança, sem timeline operacional. Não registrar view público: GET permanece sem mutação comercial nem falsa comprovação de leitura. Listagem técnica filtra contexto da própria OS E tipos permitidos de execução (service, checklist, evidence, completion); exclui quote/charge/usuários/profile/alert/report e payload de cliente interno. Admin vê timeline de contexto, não feed irrestrito exposto ao cliente.
 
-## Subconjunto persistido na CL-03
+## Subconjunto persistido na CL-04
 
-O schema atual materializa BusinessProfile singleton, User, Session, RateLimitBucket, Client, Equipment e TimelineEvent nos contextos User/BusinessProfile/Client. Client e Equipment alternam entre ACTIVE e ARCHIVED por comandos idempotentes versionados; o arquivamento do cliente preserva o estado dos equipamentos e bloqueia somente a criação de novos equipamentos. Equipment sempre pertence ao Client da rota e `client_id` não pode ser alterado.
+O schema atual materializa BusinessProfile singleton, User, Session, RateLimitBucket, Client, Equipment, Quote, QuoteItem, QuotePublicAccess e TimelineEvent nos contextos User/BusinessProfile/Client/Quote. Quote segue DRAFT→SENT→APPROVED ou CANCELLED; EXPIRED permanece derivado somente para SENT. A emissão congela QuoteSnapshotV1, guarda apenas SHA-256 do bearer e cria um único acesso não revogado por orçamento.
 
-Client.email é texto genérico de contato: trim, blank para NULL, limite 254 e rejeição de controles, sem normalização de identidade, unicidade ou validação DNS. Busca de Client e Equipment consulta somente `name`, trata `%`, `_` e `\` como literais e usa `id` como desempate estável. A timeline CL-03 acrescenta os oito eventos client/equipment, nomes de campos alterados e `equipment_id`, sem valores de contato ou notas.
+Dinheiro comercial chega como string, é calculado com Decimal/ROUND_HALF_UP por linha e persiste como NUMERIC. Substituição de itens é atômica e posições são contíguas. A timeline CL-04 registra mudanças, emissão, aprovação e ciclo de acesso sem raw bearer, hash, link ou contatos do cliente. O snapshot interno permanece histórico; a projeção pública nunca serializa o JSONB bruto.
 
-Quote, ServiceOrder, uploads, logo, Report, Charge, OperationalAlert e scheduler não foram antecipados.
+ServiceOrder, uploads, logo persistido, Report, Charge, OperationalAlert e scheduler não foram antecipados.

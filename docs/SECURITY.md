@@ -160,3 +160,11 @@ Os buckets fixed-window guardam HMAC das chaves e não possuem limpeza automáti
 Todas as rotas Client/Equipment/timeline exigem Admin antes do lookup; Técnico recebe 403 e IDs cruzados de Equipment recebem 404 uniforme. Queries de Equipment incluem simultaneamente `client_id` e `id`, e o schema rejeita `client_id` no corpo. A role runtime não pode atualizar ownership, IDs, `created_at` nem deletar; Client/Equipment usam grants UPDATE por coluna e timeline continua append-only.
 
 Mutations preservam Origin/CSRF da CL-02 e usam ETag, lock PostgreSQL e ordem Client→Equipment. Payload de timeline contém somente `equipment_id` e nomes de campos; valores de phone/email/address/notes não entram. Logs da aplicação usam route template sem query/body, e o formato nginx registra `$request_method $uri $server_protocol`, removendo argumentos. O E2E CL-03 desativa trace e screenshot para que os canários privados não sejam publicados.
+
+## Controles implementados na CL-04
+
+O bearer público tem 32 bytes, codificação base64url canônica sem padding e somente o hash SHA-256 é persistido. Leitura, logo e aprovação aplicam limites por instalação, IP e hash; falha do limiter fecha em 503. Aprovação exige Origin confiável e JSON, mas não cookie ou CSRF. Cookies privados não autenticam rotas públicas, e bearer público não autentica rotas administrativas.
+
+O bootstrap remove o fragmento antes de montar React. Fetch público usa `credentials: omit`; token não entra em props serializáveis, Context, TanStack Query, storage, console ou URL após o bootstrap. Send/rotate retornam o link uma única vez com `no-store`; o diálogo Admin limpa o estado ao fechar, copia por gesto e abre WhatsApp com mensagem sem bearer e `noopener,noreferrer`. Web Share não foi implementado.
+
+PUB-09 é protegido por allowlist de saída e teste com canários: `client` público contém exatamente `name`, embora ID, telefone, e-mail, endereço e notas existam internamente. Logs usam URI sem query, timeline não contém segredo, e os specs CL-04 desabilitam screenshot, trace e vídeo.
